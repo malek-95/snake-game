@@ -124,18 +124,20 @@ function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-900 flex flex-col items-center justify-center p-3 md:p-4 select-none overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-900 flex flex-col items-center p-3 md:p-4 pb-8 select-none">
+      {/* Main content wrapper */}
+      <div className="w-full flex flex-col items-center justify-center flex-grow py-4">
       {/* Header */}
-      <div className="w-full max-w-md md:max-w-lg mb-3 md:mb-4">
+      <div className="w-full max-w-[90vw] sm:max-w-md md:max-w-lg mb-3 md:mb-4">
         <h1 className="text-2xl md:text-4xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 mb-3">
           🐍 Snake Game
         </h1>
 
         {/* Score Board */}
-        <div className="flex justify-between items-center bg-gray-800/60 backdrop-blur-sm rounded-2xl px-4 py-3 border border-gray-700/50 shadow-lg">
+        <div className="flex justify-between items-center bg-gray-800/60 backdrop-blur-sm rounded-2xl px-2 sm:px-4 py-2 sm:py-3 border border-gray-700/50 shadow-lg">
           <div className="text-center flex-1">
-            <p className="text-[10px] md:text-xs text-gray-400 uppercase tracking-widest font-medium">Score</p>
-            <p className="text-xl md:text-2xl font-bold text-white tabular-nums">{score}</p>
+            <p className="text-[9px] sm:text-xs text-gray-400 uppercase tracking-widest font-medium">Score</p>
+            <p className="text-lg sm:text-2xl font-bold text-white tabular-nums">{score}</p>
           </div>
           <div className="w-px h-8 bg-gray-700" />
           <div className="text-center flex-1">
@@ -192,7 +194,7 @@ function App() {
 
       {/* Game Board */}
       <div
-        className={`relative w-full max-w-md md:max-w-lg aspect-square bg-gray-900/80 rounded-2xl border-2 overflow-hidden transition-all duration-300 ${
+        className={`relative w-full max-w-[90vw] sm:max-w-md md:max-w-lg aspect-square bg-gray-900/80 rounded-2xl border-2 overflow-hidden transition-all duration-300 ${
           gameMode === 'levels'
             ? 'border-purple-500/60 shadow-2xl shadow-purple-900/30'
             : wrapAround
@@ -423,7 +425,7 @@ function App() {
       </div>
 
       {/* Controls Section */}
-      <div className="w-full max-w-md md:max-w-lg mt-3 md:mt-4 space-y-3">
+      <div className="w-full max-w-[90vw] sm:max-w-md md:max-w-lg mt-3 md:mt-4 space-y-3">
         {/* Action Buttons */}
         <div className="flex gap-3 justify-center">
           {gameState === 'playing' && (
@@ -561,6 +563,7 @@ function App() {
           <p>🎮 <span className="text-gray-400">Flèches</span> ou <span className="text-gray-400">WASD</span> pour diriger le serpent</p>
           <p>⏸ <span className="text-gray-400">Espace</span> pour pause • <span className="text-gray-400">Entrée</span> pour démarrer</p>
         </div>
+      </div>
       </div>
     </div>
   );
