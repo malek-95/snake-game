@@ -10,6 +10,9 @@ function App() {
     highScore,
     difficulty,
     wrapAround,
+    applesEaten,
+    multiplier,
+    bonusEvent,
     gridSize,
     startGame,
     togglePause,
@@ -131,17 +134,29 @@ function App() {
           </div>
           <div className="w-px h-8 bg-gray-700" />
           <div className="text-center flex-1">
-            <p className="text-[10px] md:text-xs text-gray-400 uppercase tracking-widest font-medium">Vitesse</p>
-            <p className="text-lg md:text-xl font-bold text-emerald-400">
-              {difficulty === 'easy' ? '🐢' : difficulty === 'medium' ? '🐇' : '⚡'}
+            <p className="text-[10px] md:text-xs text-gray-400 uppercase tracking-widest font-medium">Bonus</p>
+            <p className={`text-lg md:text-xl font-bold tabular-nums ${multiplier > 1 ? 'text-orange-400' : 'text-gray-500'}`}>
+              x{multiplier}
             </p>
           </div>
           <div className="w-px h-8 bg-gray-700" />
           <div className="text-center flex-1">
-            <p className="text-[10px] md:text-xs text-gray-400 uppercase tracking-widest font-medium">Mode</p>
-            <p className="text-lg md:text-xl font-bold">
-              {wrapAround ? <span className="text-purple-400">🌀</span> : <span className="text-gray-500">🧱</span>}
-            </p>
+            <p className="text-[10px] md:text-xs text-gray-400 uppercase tracking-widest font-medium">Pommes</p>
+            <p className="text-lg md:text-xl font-bold text-red-400 tabular-nums">{applesEaten}</p>
+          </div>
+        </div>
+        
+        {/* Bonus Progress Bar */}
+        <div className="mt-2 px-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-400 whitespace-nowrap">Prochain bonus:</span>
+            <div className="flex-1 h-2 bg-gray-700/50 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-orange-500 to-yellow-400 transition-all duration-300 rounded-full"
+                style={{ width: `${(applesEaten % 10) * 10}%` }}
+              />
+            </div>
+            <span className="text-xs text-gray-400 tabular-nums">{applesEaten % 10}/10</span>
           </div>
         </div>
       </div>
@@ -172,6 +187,23 @@ function App() {
             <div className="absolute top-0 bottom-0 left-0 w-1 bg-gradient-to-b from-transparent via-purple-400 to-transparent opacity-60 animate-pulse z-20" />
             <div className="absolute top-0 bottom-0 right-0 w-1 bg-gradient-to-b from-transparent via-purple-400 to-transparent opacity-60 animate-pulse z-20" />
           </>
+        )}
+
+        {/* Bonus notification */}
+        {bonusEvent && gameState === 'playing' && (
+          <div
+            key={bonusEvent.id}
+            className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none"
+          >
+            <div className="bg-gradient-to-r from-orange-500/90 to-yellow-500/90 backdrop-blur-sm px-6 py-3 rounded-2xl shadow-2xl shadow-orange-500/50 border border-yellow-300/50 animate-bonus-pop">
+              <div className="text-center">
+                <p className="text-white font-bold text-lg md:text-xl">🎉 BONUS!</p>
+                <p className="text-yellow-100 text-sm md:text-base font-semibold">
+                  x{bonusEvent.multiplier} points • {bonusEvent.applesCount} pommes 🍎
+                </p>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Snake body segments */}
