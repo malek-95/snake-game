@@ -40,6 +40,12 @@ const INITIAL_SNAKE: Position[] = [
   { x: 8, y: 10 },
 ];
 
+export interface BonusEvent {
+  id: number;
+  multiplier: number;
+  applesCount: number;
+}
+
 export function useSnakeGame() {
   const [snake, setSnake] = useState<Position[]>(INITIAL_SNAKE);
   const [food, setFood] = useState<Position>({ x: 15, y: 10 });
@@ -56,6 +62,9 @@ export function useSnakeGame() {
   });
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [wrapAround, setWrapAround] = useState(false);
+  const [applesEaten, setApplesEaten] = useState(0);
+  const [multiplier, setMultiplier] = useState(1);
+  const [bonusEvent, setBonusEvent] = useState<BonusEvent | null>(null);
 
   const directionRef = useRef<Direction>('RIGHT');
   const gameLoopRef = useRef<number | null>(null);
@@ -64,6 +73,9 @@ export function useSnakeGame() {
   const scoreRef = useRef(0);
   const gameStateRef = useRef<GameState>('idle');
   const wrapAroundRef = useRef(false);
+  const applesEatenRef = useRef(0);
+  const multiplierRef = useRef(1);
+  const bonusEventIdRef = useRef(0);
 
   // Keep refs in sync
   useEffect(() => { snakeRef.current = snake; }, [snake]);
@@ -71,6 +83,18 @@ export function useSnakeGame() {
   useEffect(() => { scoreRef.current = score; }, [score]);
   useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
   useEffect(() => { wrapAroundRef.current = wrapAround; }, [wrapAround]);
+  useEffect(() => { applesEatenRef.current = applesEaten; }, [applesEaten]);
+  useEffect(() => { multiplierRef.current = multiplier; }, [multiplier]);
+  
+  // Auto-dismiss bonus notification
+  useEffect(() => {
+    if (bonusEvent) {
+      const timer = setTimeout(() => {
+        setBonusEvent(null);
+      }, 1800);
+      return () => clearTimeout(timer);
+    }
+  }, [bonusEvent]);
 
   const clearGameLoop = useCallback(() => {
     if (gameLoopRef.current !== null) {
@@ -128,7 +152,32 @@ export function useSnakeGame() {
     let newSnake: Position[];
     if (willEatFood) {
       newSnake = [newHead, ...currentSnake];
-      const newScore = scoreRef.current + SCORE_MAP[difficulty];
+      
+      // Increment apple counter
+      const newApplesEaten = applesEatenRef.current + 1;
+      applesEatenRef.current = newApplesEaten;
+      setApplesEaten(newApplesEaten);
+      
+      // Check for bonus (every 10 apples)
+      let currentMultiplier = multiplierRef.current;
+      if (newApplesEaten % 10 === 0) {
+        currentMultiplier = Math.floor(newApplesEaten / 10) + 1;
+        multiplierRef.current = currentMultiplier;
+        setMultiplier(currentMultiplier);
+        
+        // Trigger bonus event notification
+        bonusEventIdRef.current += 1;
+        setBonusEvent({
+          id: bonusEventIdRef.current,
+          multiplier: currentMultiplier,
+          applesCount: newApplesEaten,
+        });
+      }
+      
+      // Calculate score with multiplier
+      const basePoints = SCORE_MAP[difficulty];
+      const earnedPoints = basePoints * currentMultiplier;
+      const newScore = scoreRef.current + earnedPoints;
       setScore(newScore);
       scoreRef.current = newScore;
 
@@ -172,6 +221,11 @@ export function useSnakeGame() {
     directionRef.current = 'RIGHT';
     setScore(0);
     scoreRef.current = 0;
+    setApplesEaten(0);
+    applesEatenRef.current = 0;
+    setMultiplier(1);
+    multiplierRef.current = 1;
+    setBonusEvent(null);
     setGameState('playing');
     gameStateRef.current = 'playing';
   }, []);
@@ -227,6 +281,9 @@ export function useSnakeGame() {
     highScore,
     difficulty,
     wrapAround,
+    applesEaten,
+    multiplier,
+    bonusEvent,
     gridSize: GRID_SIZE,
     startGame,
     togglePause,
