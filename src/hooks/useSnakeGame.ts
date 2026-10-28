@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 export type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type GameState = 'idle' | 'playing' | 'paused' | 'gameover';
+export type GameMode = 'classic' | 'levels';
 
 interface Position {
   x: number;
@@ -23,14 +24,87 @@ const SCORE_MAP: Record<Difficulty, number> = {
   hard: 20,
 };
 
-function getRandomPosition(snake: Position[]): Position {
+interface LevelConfig {
+  obstacles: Position[];
+  applesToComplete: number;
+  speedMultiplier: number;
+}
+
+const generateLevelConfig = (level: number): LevelConfig => {
+  const obstacles: Position[] = [];
+  const applesToComplete = 5 + level * 2;
+  const speedMultiplier = 1 + (level - 1) * 0.1;
+
+  // Generate obstacles based on level
+  if (level >= 1) {
+    // Level 1: Simple corners
+    obstacles.push({ x: 5, y: 5 }, { x: 5, y: 6 }, { x: 6, y: 5 });
+    obstacles.push({ x: 14, y: 14 }, { x: 14, y: 13 }, { x: 13, y: 14 });
+  }
+  
+  if (level >= 2) {
+    // Level 2: Add walls
+    for (let i = 8; i <= 12; i++) {
+      obstacles.push({ x: i, y: 3 });
+    }
+  }
+  
+  if (level >= 3) {
+    // Level 3: Add more walls
+    for (let i = 8; i <= 12; i++) {
+      obstacles.push({ x: i, y: 16 });
+    }
+    obstacles.push({ x: 3, y: 10 }, { x: 4, y: 10 }, { x: 3, y: 11 });
+    obstacles.push({ x: 16, y: 10 }, { x: 15, y: 10 }, { x: 16, y: 11 });
+  }
+  
+  if (level >= 4) {
+    // Level 4: Maze-like
+    for (let i = 7; i <= 13; i++) {
+      if (i !== 10) obstacles.push({ x: i, y: 7 });
+      if (i !== 10) obstacles.push({ x: i, y: 12 });
+    }
+  }
+  
+  if (level >= 5) {
+    // Level 5+: Add random obstacles
+    const extraObstacles = Math.min(level - 4, 10);
+    for (let i = 0; i < extraObstacles; i++) {
+      let pos: Position;
+      let attempts = 0;
+      do {
+        pos = {
+          x: Math.floor(Math.random() * GRID_SIZE),
+          y: Math.floor(Math.random() * GRID_SIZE),
+        };
+        attempts++;
+      } while (
+        attempts < 50 &&
+        (obstacles.some(o => o.x === pos.x && o.y === pos.y) ||
+         INITIAL_SNAKE.some(s => s.x === pos.x && s.y === pos.y) ||
+         (pos.x >= 8 && pos.x <= 12 && pos.y >= 8 && pos.y <= 12))
+      );
+      if (attempts < 50) obstacles.push(pos);
+    }
+  }
+
+  return { obstacles, applesToComplete, speedMultiplier };
+};
+
+function getRandomPosition(snake: Position[], obstacles: Position[] = []): Position {
   let pos: Position;
+  let attempts = 0;
   do {
     pos = {
       x: Math.floor(Math.random() * GRID_SIZE),
       y: Math.floor(Math.random() * GRID_SIZE),
     };
-  } while (snake.some(segment => segment.x === pos.x && segment.y === pos.y));
+    attempts++;
+    if (attempts > 100) break; // Safety fallback
+  } while (
+    snake.some(segment => segment.x === pos.x && segment.y === pos.y) ||
+    obstacles.some(obs => obs.x === pos.x && obs.y === pos.y)
+  );
   return pos;
 }
 
@@ -80,6 +154,14 @@ export function useSnakeGame() {
   const [lifeLostEvent, setLifeLostEvent] = useState<LifeLostEvent | null>(null);
   const [lifeGainedEvent, setLifeGainedEvent] = useState<LifeGainedEvent | null>(null);
   const lifeGainedEventIdRef = useRef(0);
+  
+  // Levels mode
+  const [gameMode, setGameMode] = useState<GameMode>('classic');
+  const [level, setLevel] = useState(1);
+  const [obstacles, setObstacles] = useState<Position[]>([]);
+  const [levelApples, setLevelApples] = useState(0);
+  const [levelCompleteEvent, setLevelCompleteEvent] = useState<{ id: number; level: number } | null>(null);
+  const levelCompleteEventIdRef = useRef(0);
 
   const directionRef = useRef<Direction>('RIGHT');
   const gameLoopRef = useRef<number | null>(null);
@@ -94,6 +176,11 @@ export function useSnakeGame() {
   const livesRef = useRef(1);
   const bonusLivesGivenRef = useRef(0);
   const lifeLostEventIdRef = useRef(0);
+  const gameModeRef = useRef<GameMode>('classic');
+  const levelRef = useRef(1);
+  const obstaclesRef = useRef<Position[]>([]);
+  const levelApplesRef = useRef(0);
+  const levelConfigRef = useRef<LevelConfig>(generateLevelConfig(1));
 
   // Keep refs in sync
   useEffect(() => { snakeRef.current = snake; }, [snake]);
@@ -105,6 +192,10 @@ export function useSnakeGame() {
   useEffect(() => { multiplierRef.current = multiplier; }, [multiplier]);
   useEffect(() => { livesRef.current = lives; }, [lives]);
   useEffect(() => { bonusLivesGivenRef.current = bonusLivesGiven; }, [bonusLivesGiven]);
+  useEffect(() => { gameModeRef.current = gameMode; }, [gameMode]);
+  useEffect(() => { levelRef.current = level; }, [level]);
+  useEffect(() => { obstaclesRef.current = obstacles; }, [obstacles]);
+  useEffect(() => { levelApplesRef.current = levelApples; }, [levelApples]);
   
   // Auto-dismiss bonus notification
   useEffect(() => {
@@ -135,6 +226,16 @@ export function useSnakeGame() {
       return () => clearTimeout(timer);
     }
   }, [lifeGainedEvent]);
+
+  // Auto-dismiss level complete notification
+  useEffect(() => {
+    if (levelCompleteEvent) {
+      const timer = setTimeout(() => {
+        setLevelCompleteEvent(null);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [levelCompleteEvent]);
 
   const clearGameLoop = useCallback(() => {
     if (gameLoopRef.current !== null) {
@@ -167,8 +268,8 @@ export function useSnakeGame() {
       directionRef.current = 'RIGHT';
       setDirection('RIGHT');
       
-      // Generate new food away from snake
-      const newFood = getRandomPosition(newSnake);
+      // Generate new food away from snake and obstacles
+      const newFood = getRandomPosition(newSnake, obstaclesRef.current);
       setFood(newFood);
       foodRef.current = newFood;
       
@@ -227,6 +328,12 @@ export function useSnakeGame() {
       return;
     }
 
+    // Check obstacle collision (in levels mode)
+    if (gameModeRef.current === 'levels' && obstaclesRef.current.some(obs => obs.x === newHead.x && obs.y === newHead.y)) {
+      handleDeath();
+      return;
+    }
+
     let newSnake: Position[];
     if (willEatFood) {
       newSnake = [newHead, ...currentSnake];
@@ -269,6 +376,48 @@ export function useSnakeGame() {
         });
       }
       
+      // Level mode: track apples and check level completion
+      if (gameModeRef.current === 'levels') {
+        const newLevelApples = levelApplesRef.current + 1;
+        levelApplesRef.current = newLevelApples;
+        setLevelApples(newLevelApples);
+        
+        if (newLevelApples >= levelConfigRef.current.applesToComplete) {
+          // Level complete!
+          const completedLevel = levelRef.current;
+          const nextLevel = completedLevel + 1;
+          
+          levelCompleteEventIdRef.current += 1;
+          setLevelCompleteEvent({
+            id: levelCompleteEventIdRef.current,
+            level: completedLevel,
+          });
+          
+          // Advance to next level
+          levelRef.current = nextLevel;
+          setLevel(nextLevel);
+          levelApplesRef.current = 0;
+          setLevelApples(0);
+          
+          // Generate new obstacles for next level
+          const nextLevelConfig = generateLevelConfig(nextLevel);
+          levelConfigRef.current = nextLevelConfig;
+          setObstacles(nextLevelConfig.obstacles);
+          obstaclesRef.current = nextLevelConfig.obstacles;
+          
+          // Reset snake and food for new level
+          const resetSnake = [...INITIAL_SNAKE];
+          setSnake(resetSnake);
+          snakeRef.current = resetSnake;
+          directionRef.current = 'RIGHT';
+          setDirection('RIGHT');
+          
+          const newFood = getRandomPosition([...resetSnake, ...nextLevelConfig.obstacles]);
+          setFood(newFood);
+          foodRef.current = newFood;
+        }
+      }
+      
       // Calculate score with multiplier
       const basePoints = SCORE_MAP[difficulty];
       const earnedPoints = basePoints * currentMultiplier;
@@ -288,7 +437,7 @@ export function useSnakeGame() {
       });
 
       // Generate new food
-      const newFood = getRandomPosition(newSnake);
+      const newFood = getRandomPosition(newSnake, obstaclesRef.current);
       setFood(newFood);
       foodRef.current = newFood;
     } else {
@@ -301,12 +450,31 @@ export function useSnakeGame() {
 
   const startGameLoop = useCallback(() => {
     clearGameLoop();
-    gameLoopRef.current = window.setInterval(moveSnake, SPEED_MAP[difficulty]);
+    const baseSpeed = SPEED_MAP[difficulty];
+    const speedMultiplier = gameModeRef.current === 'levels' ? levelConfigRef.current.speedMultiplier : 1;
+    const actualSpeed = Math.max(40, baseSpeed / speedMultiplier);
+    gameLoopRef.current = window.setInterval(moveSnake, actualSpeed);
   }, [clearGameLoop, moveSnake, difficulty]);
 
   const startGame = useCallback(() => {
     const initialSnake = [...INITIAL_SNAKE];
-    const initialFood = getRandomPosition(initialSnake);
+    
+    // Initialize level config if in levels mode
+    let initialObstacles: Position[] = [];
+    if (gameModeRef.current === 'levels') {
+      const levelConfig = generateLevelConfig(1);
+      levelConfigRef.current = levelConfig;
+      initialObstacles = levelConfig.obstacles;
+      setObstacles(initialObstacles);
+      obstaclesRef.current = initialObstacles;
+      setLevel(1);
+      levelRef.current = 1;
+      setLevelApples(0);
+      levelApplesRef.current = 0;
+      setLevelCompleteEvent(null);
+    }
+    
+    const initialFood = getRandomPosition(initialSnake, initialObstacles);
     
     setSnake(initialSnake);
     snakeRef.current = initialSnake;
@@ -349,7 +517,14 @@ export function useSnakeGame() {
     return clearGameLoop;
   }, [gameState, startGameLoop, clearGameLoop]);
 
+  const lastDirectionChangeRef = useRef<number>(0);
+
   const changeDirection = useCallback((newDir: Direction) => {
+    // Prevent rapid direction changes (debounce 50ms)
+    const now = Date.now();
+    if (now - lastDirectionChangeRef.current < 50) return;
+    lastDirectionChangeRef.current = now;
+
     const opposites: Record<Direction, Direction> = {
       UP: 'DOWN',
       DOWN: 'UP',
@@ -371,6 +546,16 @@ export function useSnakeGame() {
     setWrapAround(prev => !prev);
   }, []);
 
+  const changeGameMode = useCallback((mode: GameMode) => {
+    setGameMode(mode);
+    gameModeRef.current = mode;
+    if (mode === 'levels') {
+      // In levels mode, wrap around is not allowed
+      setWrapAround(false);
+      wrapAroundRef.current = false;
+    }
+  }, []);
+
   return {
     snake,
     food,
@@ -387,11 +572,17 @@ export function useSnakeGame() {
     bonusLivesGiven,
     lifeLostEvent,
     lifeGainedEvent,
+    gameMode,
+    level,
+    obstacles,
+    levelApples,
+    levelCompleteEvent,
     gridSize: GRID_SIZE,
     startGame,
     togglePause,
     changeDirection,
     changeDifficulty,
     toggleWrapAround,
+    changeGameMode,
   };
 }
