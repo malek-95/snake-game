@@ -181,6 +181,7 @@ export function useSnakeGame() {
   const obstaclesRef = useRef<Position[]>([]);
   const levelApplesRef = useRef(0);
   const levelConfigRef = useRef<LevelConfig>(generateLevelConfig(1));
+  const directionQueueRef = useRef<Direction[]>([]);
 
   // Keep refs in sync
   useEffect(() => { snakeRef.current = snake; }, [snake]);
@@ -264,8 +265,9 @@ export function useSnakeGame() {
       setSnake(newSnake);
       snakeRef.current = newSnake;
       
-      // Reset direction
+      // Reset direction and clear queue
       directionRef.current = 'RIGHT';
+      directionQueueRef.current = [];
       setDirection('RIGHT');
       
       // Generate new food away from snake and obstacles
@@ -284,6 +286,13 @@ export function useSnakeGame() {
 
   const moveSnake = useCallback(() => {
     if (gameStateRef.current !== 'playing') return;
+
+    // Consume next direction from queue if available
+    if (directionQueueRef.current.length > 0) {
+      const nextDir = directionQueueRef.current.shift()!;
+      directionRef.current = nextDir;
+      setDirection(nextDir);
+    }
 
     const currentSnake = snakeRef.current;
     const currentFood = foodRef.current;
@@ -410,6 +419,7 @@ export function useSnakeGame() {
           setSnake(resetSnake);
           snakeRef.current = resetSnake;
           directionRef.current = 'RIGHT';
+          directionQueueRef.current = [];
           setDirection('RIGHT');
           
           const newFood = getRandomPosition([...resetSnake, ...nextLevelConfig.obstacles]);
@@ -482,6 +492,7 @@ export function useSnakeGame() {
     foodRef.current = initialFood;
     setDirection('RIGHT');
     directionRef.current = 'RIGHT';
+    directionQueueRef.current = [];
     setScore(0);
     scoreRef.current = 0;
     setApplesEaten(0);
@@ -517,24 +528,24 @@ export function useSnakeGame() {
     return clearGameLoop;
   }, [gameState, startGameLoop, clearGameLoop]);
 
-  const lastDirectionChangeRef = useRef<number>(0);
-
   const changeDirection = useCallback((newDir: Direction) => {
-    // Prevent rapid direction changes (debounce 50ms)
-    const now = Date.now();
-    if (now - lastDirectionChangeRef.current < 50) return;
-    lastDirectionChangeRef.current = now;
-
     const opposites: Record<Direction, Direction> = {
       UP: 'DOWN',
       DOWN: 'UP',
       LEFT: 'RIGHT',
       RIGHT: 'LEFT',
     };
-    const currentDir = directionRef.current;
-    if (opposites[newDir] !== currentDir && newDir !== currentDir) {
-      directionRef.current = newDir;
-      setDirection(newDir);
+    
+    // Get the last direction to validate against (from queue or current)
+    const queue = directionQueueRef.current;
+    const lastDir = queue.length > 0 ? queue[queue.length - 1] : directionRef.current;
+    
+    // Only add to queue if it's not opposite and not the same as last direction
+    if (opposites[newDir] !== lastDir && newDir !== lastDir) {
+      // Limit queue size to prevent buildup
+      if (queue.length < 2) {
+        queue.push(newDir);
+      }
     }
   }, []);
 
