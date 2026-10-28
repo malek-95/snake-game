@@ -190,7 +190,6 @@ function App() {
                 backgroundColor: isHead ? '#4ade80' : '#22c55e',
                 opacity,
                 boxShadow: isHead ? '0 0 12px rgba(74, 222, 128, 0.5)' : 'none',
-                transition: 'left 0.05s linear, top 0.05s linear',
               }}
             >
               {isHead && (
