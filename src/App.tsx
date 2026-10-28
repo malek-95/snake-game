@@ -13,6 +13,10 @@ function App() {
     applesEaten,
     multiplier,
     bonusEvent,
+    lives,
+    bonusLivesGiven,
+    lifeLostEvent,
+    lifeGainedEvent,
     gridSize,
     startGame,
     togglePause,
@@ -144,7 +148,26 @@ function App() {
             <p className="text-[10px] md:text-xs text-gray-400 uppercase tracking-widest font-medium">Pommes</p>
             <p className="text-lg md:text-xl font-bold text-red-400 tabular-nums">{applesEaten}</p>
           </div>
+          <div className="w-px h-8 bg-gray-700" />
+          <div className="text-center flex-1">
+            <p className="text-[10px] md:text-xs text-gray-400 uppercase tracking-widest font-medium">Vies</p>
+            <p className="text-lg md:text-xl font-bold">
+              {Array.from({ length: lives }).map((_, i) => (
+                <span key={i} className="text-red-500">❤️</span>
+              ))}
+              {lives === 0 && <span className="text-gray-500">💀</span>}
+            </p>
+          </div>
         </div>
+        
+        {/* Lives bonus indicator */}
+        {bonusLivesGiven < 3 && (
+          <div className="mt-1 px-2">
+            <p className="text-[10px] text-gray-500 text-center">
+              💚 Vie bonus à {30 - (applesEaten % 30)} pommes • {3 - bonusLivesGiven} restante{3 - bonusLivesGiven > 1 ? 's' : ''}
+            </p>
+          </div>
+        )}
         
         {/* Bonus Progress Bar */}
         <div className="mt-2 px-2">
@@ -200,6 +223,40 @@ function App() {
                 <p className="text-white font-bold text-lg md:text-xl">🎉 BONUS!</p>
                 <p className="text-yellow-100 text-sm md:text-base font-semibold">
                   x{bonusEvent.multiplier} points • {bonusEvent.applesCount} pommes 🍎
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Life lost notification */}
+        {lifeLostEvent && gameState === 'playing' && (
+          <div
+            key={lifeLostEvent.id}
+            className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none"
+          >
+            <div className="bg-gradient-to-r from-red-600/90 to-rose-600/90 backdrop-blur-sm px-6 py-3 rounded-2xl shadow-2xl shadow-red-500/50 border border-red-300/50 animate-life-lost-pop">
+              <div className="text-center">
+                <p className="text-white font-bold text-lg md:text-xl">💔 Vie perdue!</p>
+                <p className="text-red-100 text-sm md:text-base font-semibold">
+                  {lifeLostEvent.livesRemaining} vie{lifeLostEvent.livesRemaining > 1 ? 's' : ''} restante{lifeLostEvent.livesRemaining > 1 ? 's' : ''}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Life gained notification */}
+        {lifeGainedEvent && gameState === 'playing' && (
+          <div
+            key={lifeGainedEvent.id}
+            className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none"
+          >
+            <div className="bg-gradient-to-r from-green-500/90 to-emerald-500/90 backdrop-blur-sm px-6 py-3 rounded-2xl shadow-2xl shadow-green-500/50 border border-green-300/50 animate-life-gained-pop">
+              <div className="text-center">
+                <p className="text-white font-bold text-lg md:text-xl">💚 +1 Vie!</p>
+                <p className="text-green-100 text-sm md:text-base font-semibold">
+                  {lifeGainedEvent.lives} vie{lifeGainedEvent.lives > 1 ? 's' : ''} totale{lifeGainedEvent.lives > 1 ? 's' : ''}
                 </p>
               </div>
             </div>
@@ -286,9 +343,15 @@ function App() {
           <div className="absolute inset-0 bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center z-30 rounded-2xl">
             <div className="text-4xl md:text-5xl mb-3">💀</div>
             <h2 className="text-xl md:text-2xl font-bold text-red-400 mb-3">Game Over!</h2>
-            <div className="bg-gray-800/80 rounded-xl px-6 py-3 mb-4 border border-gray-700">
+            <div className="bg-gray-800/80 rounded-xl px-6 py-3 mb-4 border border-gray-700 space-y-2">
               <p className="text-white text-center">
                 Score: <span className="font-bold text-green-400 text-xl">{score}</span>
+              </p>
+              <p className="text-gray-300 text-center text-sm">
+                🍎 {applesEaten} pommes mangées
+              </p>
+              <p className="text-gray-300 text-center text-sm">
+                ❤️ {bonusLivesGiven}/3 vies bonus utilisées
               </p>
               {score >= highScore && score > 0 && (
                 <p className="text-yellow-400 text-sm text-center mt-2 animate-pulse font-semibold">

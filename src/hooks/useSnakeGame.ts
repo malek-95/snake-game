@@ -46,6 +46,16 @@ export interface BonusEvent {
   applesCount: number;
 }
 
+export interface LifeLostEvent {
+  id: number;
+  livesRemaining: number;
+}
+
+export interface LifeGainedEvent {
+  id: number;
+  lives: number;
+}
+
 export function useSnakeGame() {
   const [snake, setSnake] = useState<Position[]>(INITIAL_SNAKE);
   const [food, setFood] = useState<Position>({ x: 15, y: 10 });
@@ -65,6 +75,11 @@ export function useSnakeGame() {
   const [applesEaten, setApplesEaten] = useState(0);
   const [multiplier, setMultiplier] = useState(1);
   const [bonusEvent, setBonusEvent] = useState<BonusEvent | null>(null);
+  const [lives, setLives] = useState(1);
+  const [bonusLivesGiven, setBonusLivesGiven] = useState(0);
+  const [lifeLostEvent, setLifeLostEvent] = useState<LifeLostEvent | null>(null);
+  const [lifeGainedEvent, setLifeGainedEvent] = useState<LifeGainedEvent | null>(null);
+  const lifeGainedEventIdRef = useRef(0);
 
   const directionRef = useRef<Direction>('RIGHT');
   const gameLoopRef = useRef<number | null>(null);
@@ -76,6 +91,9 @@ export function useSnakeGame() {
   const applesEatenRef = useRef(0);
   const multiplierRef = useRef(1);
   const bonusEventIdRef = useRef(0);
+  const livesRef = useRef(1);
+  const bonusLivesGivenRef = useRef(0);
+  const lifeLostEventIdRef = useRef(0);
 
   // Keep refs in sync
   useEffect(() => { snakeRef.current = snake; }, [snake]);
@@ -85,6 +103,8 @@ export function useSnakeGame() {
   useEffect(() => { wrapAroundRef.current = wrapAround; }, [wrapAround]);
   useEffect(() => { applesEatenRef.current = applesEaten; }, [applesEaten]);
   useEffect(() => { multiplierRef.current = multiplier; }, [multiplier]);
+  useEffect(() => { livesRef.current = lives; }, [lives]);
+  useEffect(() => { bonusLivesGivenRef.current = bonusLivesGiven; }, [bonusLivesGiven]);
   
   // Auto-dismiss bonus notification
   useEffect(() => {
@@ -96,10 +116,68 @@ export function useSnakeGame() {
     }
   }, [bonusEvent]);
 
+  // Auto-dismiss life lost notification
+  useEffect(() => {
+    if (lifeLostEvent) {
+      const timer = setTimeout(() => {
+        setLifeLostEvent(null);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [lifeLostEvent]);
+
+  // Auto-dismiss life gained notification
+  useEffect(() => {
+    if (lifeGainedEvent) {
+      const timer = setTimeout(() => {
+        setLifeGainedEvent(null);
+      }, 1800);
+      return () => clearTimeout(timer);
+    }
+  }, [lifeGainedEvent]);
+
   const clearGameLoop = useCallback(() => {
     if (gameLoopRef.current !== null) {
       clearInterval(gameLoopRef.current);
       gameLoopRef.current = null;
+    }
+  }, []);
+
+  const handleDeath = useCallback(() => {
+    const currentLives = livesRef.current;
+    if (currentLives > 1) {
+      // Use a life and respawn
+      const newLives = currentLives - 1;
+      livesRef.current = newLives;
+      setLives(newLives);
+      
+      // Trigger life lost notification
+      lifeLostEventIdRef.current += 1;
+      setLifeLostEvent({
+        id: lifeLostEventIdRef.current,
+        livesRemaining: newLives,
+      });
+      
+      // Reset snake position
+      const newSnake = [...INITIAL_SNAKE];
+      setSnake(newSnake);
+      snakeRef.current = newSnake;
+      
+      // Reset direction
+      directionRef.current = 'RIGHT';
+      setDirection('RIGHT');
+      
+      // Generate new food away from snake
+      const newFood = getRandomPosition(newSnake);
+      setFood(newFood);
+      foodRef.current = newFood;
+      
+      // Reset multiplier on death
+      multiplierRef.current = 1;
+      setMultiplier(1);
+    } else {
+      // No lives left, game over
+      setGameState('gameover');
     }
   }, []);
 
@@ -136,7 +214,7 @@ export function useSnakeGame() {
           y: (newHead.y + GRID_SIZE) % GRID_SIZE,
         };
       } else {
-        setGameState('gameover');
+        handleDeath();
         return;
       }
     }
@@ -145,7 +223,7 @@ export function useSnakeGame() {
     const willEatFood = newHead.x === currentFood.x && newHead.y === currentFood.y;
     const bodyToCheck = willEatFood ? currentSnake : currentSnake.slice(0, -1);
     if (bodyToCheck.some(segment => segment.x === newHead.x && segment.y === newHead.y)) {
-      setGameState('gameover');
+      handleDeath();
       return;
     }
 
@@ -171,6 +249,23 @@ export function useSnakeGame() {
           id: bonusEventIdRef.current,
           multiplier: currentMultiplier,
           applesCount: newApplesEaten,
+        });
+      }
+      
+      // Check for extra life (every 30 apples, max 3 bonus lives)
+      if (newApplesEaten % 30 === 0 && bonusLivesGivenRef.current < 3) {
+        bonusLivesGivenRef.current += 1;
+        setBonusLivesGiven(bonusLivesGivenRef.current);
+        
+        const newLives = livesRef.current + 1;
+        livesRef.current = newLives;
+        setLives(newLives);
+        
+        // Trigger life gained notification
+        lifeGainedEventIdRef.current += 1;
+        setLifeGainedEvent({
+          id: lifeGainedEventIdRef.current,
+          lives: newLives,
         });
       }
       
@@ -226,6 +321,10 @@ export function useSnakeGame() {
     setMultiplier(1);
     multiplierRef.current = 1;
     setBonusEvent(null);
+    setLives(1);
+    livesRef.current = 1;
+    setBonusLivesGiven(0);
+    bonusLivesGivenRef.current = 0;
     setGameState('playing');
     gameStateRef.current = 'playing';
   }, []);
@@ -284,6 +383,10 @@ export function useSnakeGame() {
     applesEaten,
     multiplier,
     bonusEvent,
+    lives,
+    bonusLivesGiven,
+    lifeLostEvent,
+    lifeGainedEvent,
     gridSize: GRID_SIZE,
     startGame,
     togglePause,
