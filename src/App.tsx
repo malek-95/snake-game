@@ -9,11 +9,13 @@ function App() {
     score,
     highScore,
     difficulty,
+    wrapAround,
     gridSize,
     startGame,
     togglePause,
     changeDirection,
     changeDifficulty,
+    toggleWrapAround,
   } = useSnakeGame();
 
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -134,12 +136,23 @@ function App() {
               {difficulty === 'easy' ? '🐢' : difficulty === 'medium' ? '🐇' : '⚡'}
             </p>
           </div>
+          <div className="w-px h-8 bg-gray-700" />
+          <div className="text-center flex-1">
+            <p className="text-[10px] md:text-xs text-gray-400 uppercase tracking-widest font-medium">Mode</p>
+            <p className="text-lg md:text-xl font-bold">
+              {wrapAround ? <span className="text-purple-400">🌀</span> : <span className="text-gray-500">🧱</span>}
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Game Board */}
       <div
-        className="relative w-full max-w-md md:max-w-lg aspect-square bg-gray-900/80 rounded-2xl border-2 border-gray-600/50 shadow-2xl shadow-green-900/10 overflow-hidden"
+        className={`relative w-full max-w-md md:max-w-lg aspect-square bg-gray-900/80 rounded-2xl border-2 overflow-hidden transition-all duration-300 ${
+          wrapAround
+            ? 'border-purple-500/60 shadow-2xl shadow-purple-900/30'
+            : 'border-gray-600/50 shadow-2xl shadow-green-900/10'
+        }`}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
@@ -150,6 +163,16 @@ function App() {
             backgroundSize: `calc(100% / ${gridSize}) calc(100% / ${gridSize})`,
           }} />
         </div>
+
+        {/* Wrap around portal indicators on edges */}
+        {wrapAround && gameState === 'playing' && (
+          <>
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-purple-400 to-transparent opacity-60 animate-pulse z-20" />
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-purple-400 to-transparent opacity-60 animate-pulse z-20" />
+            <div className="absolute top-0 bottom-0 left-0 w-1 bg-gradient-to-b from-transparent via-purple-400 to-transparent opacity-60 animate-pulse z-20" />
+            <div className="absolute top-0 bottom-0 right-0 w-1 bg-gradient-to-b from-transparent via-purple-400 to-transparent opacity-60 animate-pulse z-20" />
+          </>
+        )}
 
         {/* Snake body segments */}
         {snake.map((segment, index) => {
@@ -290,6 +313,21 @@ function App() {
               {d.emoji} {d.label}
             </button>
           ))}
+        </div>
+
+        {/* Wrap Around Mode Toggle */}
+        <div className="flex justify-center">
+          <button
+            onClick={toggleWrapAround}
+            disabled={gameState === 'playing' || gameState === 'paused'}
+            className={`px-4 py-2 text-xs md:text-sm font-bold rounded-xl transition-all duration-200 border ${
+              wrapAround
+                ? 'bg-gradient-to-r from-purple-600 to-violet-600 text-white border-purple-400/50 shadow-lg shadow-purple-500/20 ring-2 ring-purple-400/30'
+                : 'bg-gray-700/60 text-gray-400 border-gray-600/50 hover:bg-gray-600 hover:text-gray-300'
+            } ${(gameState === 'playing' || gameState === 'paused') ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''}`}
+          >
+            🌀 Traversée des murs {wrapAround ? 'ON' : 'OFF'}
+          </button>
         </div>
 
         {/* Mobile D-Pad Controls */}

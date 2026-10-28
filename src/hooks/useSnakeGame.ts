@@ -55,6 +55,7 @@ export function useSnakeGame() {
     }
   });
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
+  const [wrapAround, setWrapAround] = useState(false);
 
   const directionRef = useRef<Direction>('RIGHT');
   const gameLoopRef = useRef<number | null>(null);
@@ -62,12 +63,14 @@ export function useSnakeGame() {
   const foodRef = useRef<Position>({ x: 15, y: 10 });
   const scoreRef = useRef(0);
   const gameStateRef = useRef<GameState>('idle');
+  const wrapAroundRef = useRef(false);
 
   // Keep refs in sync
   useEffect(() => { snakeRef.current = snake; }, [snake]);
   useEffect(() => { foodRef.current = food; }, [food]);
   useEffect(() => { scoreRef.current = score; }, [score]);
   useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+  useEffect(() => { wrapAroundRef.current = wrapAround; }, [wrapAround]);
 
   const clearGameLoop = useCallback(() => {
     if (gameLoopRef.current !== null) {
@@ -100,10 +103,18 @@ export function useSnakeGame() {
         break;
     }
 
-    // Check wall collision
+    // Check wall collision or wrap around
     if (newHead.x < 0 || newHead.x >= GRID_SIZE || newHead.y < 0 || newHead.y >= GRID_SIZE) {
-      setGameState('gameover');
-      return;
+      if (wrapAroundRef.current) {
+        // Wrap around: teleport to the other side
+        newHead = {
+          x: (newHead.x + GRID_SIZE) % GRID_SIZE,
+          y: (newHead.y + GRID_SIZE) % GRID_SIZE,
+        };
+      } else {
+        setGameState('gameover');
+        return;
+      }
     }
 
     // Check self collision (exclude tail since it will move)
@@ -203,6 +214,10 @@ export function useSnakeGame() {
     setDifficulty(newDifficulty);
   }, []);
 
+  const toggleWrapAround = useCallback(() => {
+    setWrapAround(prev => !prev);
+  }, []);
+
   return {
     snake,
     food,
@@ -211,10 +226,12 @@ export function useSnakeGame() {
     score,
     highScore,
     difficulty,
+    wrapAround,
     gridSize: GRID_SIZE,
     startGame,
     togglePause,
     changeDirection,
     changeDifficulty,
+    toggleWrapAround,
   };
 }
