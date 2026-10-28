@@ -54,3 +54,61 @@
 .animate-bonus-pop {
   animation: bonus-pop 1.8s ease-out forwards;
 }
+
+@keyframes life-lost-pop {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  20% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  40% {
+    transform: scale(0.95);
+    opacity: 1;
+  }
+  60% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+  80% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+}
+
+.animate-life-lost-pop {
+  animation: life-lost-pop 1.5s ease-out forwards;
+}
+
+@keyframes life-gained-pop {
+  0% {
+    transform: scale(0.3) rotate(-10deg);
+    opacity: 0;
+  }
+  30% {
+    transform: scale(1.2) rotate(5deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  80% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.8) rotate(0deg);
+    opacity: 0;
+  }
+}
+
+.animate-life-gained-pop {
+  animation: life-gained-pop 1.8s ease-out forwards;
+}
