@@ -178,6 +178,8 @@ export interface Translations {
   saveYourScore: string;
   sentWorld: string;
   worldFailed: string;
+  youWinRound: string;
+  youWinMatch: string;
 
   // Language selector
   language: string;
@@ -337,6 +339,8 @@ export const translations: Record<Language, Translations> = {
     saveYourScore: 'Enregistre ton score :',
     sentWorld: '🌍 Envoyé au classement mondial',
     worldFailed: '🌍 Envoi au classement mondial impossible',
+    youWinRound: 'Tu gagnes la manche !',
+    youWinMatch: 'Tu remportes le match ! 🏆',
     language: '🌐 Language / Langue',
     french: '🇫🇷 Français',
     english: '🇬🇧 English',
@@ -492,6 +496,8 @@ export const translations: Record<Language, Translations> = {
     saveYourScore: 'Save your score:',
     sentWorld: '🌍 Sent to the world board',
     worldFailed: '🌍 Couldn’t reach the world board',
+    youWinRound: 'You win the round!',
+    youWinMatch: 'You win the match! 🏆',
     language: '🌐 Language / Langue',
     french: '🇫🇷 Français',
     english: '🇬🇧 English',

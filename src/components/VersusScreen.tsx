@@ -172,8 +172,8 @@ export const VersusScreen = ({ difficulty, skin, theme, musicOn, t, room, onExit
     : [0, 1].map(i => (i === myIndex ? t('you') : t('friend')));
   const resultText =
     state.result === 'draw' ? t('draw')
-    : winner !== null ? `${names[winner]} ${t('winsMatch')}`
-    : state.result !== null ? `${names[state.result]} ${t('winsRound')}`
+    : winner !== null ? (winner === myIndex ? t('youWinMatch') : `${names[winner]} ${t('winsMatch')}`)
+    : state.result !== null ? (state.result === myIndex ? t('youWinRound') : `${names[state.result]} ${t('winsRound')}`)
     : '';
   const showOverlay = phase !== 'playing' || peerGone;
 
