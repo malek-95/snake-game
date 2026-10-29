@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import type { Grid, Position } from '../types/game.types';
 import type { Skin, Theme } from '../features/look';
 
@@ -54,28 +54,78 @@ const headAngle = (body: Position[]) => {
   return dx === 1 ? 0 : dx === -1 ? 180 : dy === 1 ? 90 : -90;
 };
 
-const Eyes = ({ angle, dead }: { angle: number; dead?: boolean }) => (
-  <div className="absolute inset-0" style={{ transform: `rotate(${angle}deg)` }}>
-    {[30, 70].map(top => (
-      <span
-        key={top}
-        className="absolute rounded-full bg-white flex items-center justify-center"
-        style={{ width: '32%', height: '32%', left: '62%', top: `${top}%`, transform: 'translate(-50%, -50%)' }}
-      >
-        {dead ? (
-          <span className="text-[8px] md:text-[10px] leading-none font-black text-gray-900">×</span>
-        ) : (
-          <span className="block rounded-full bg-gray-900" style={{ width: '55%', height: '55%', transform: 'translateX(30%)' }} />
-        )}
-      </span>
-    ))}
-  </div>
-);
+/**
+ * One snake drawn as a single smooth line through its segments, recomputed every animation frame
+ * while it moves, so the body bends naturally around corners and stays in one piece.
+ */
+const SnakeLayer = ({ snake, grid, tickMs }: { snake: BoardSnake; grid: Grid; tickMs?: number }) => {
+  const move = useRef<{ from: Position[] | null; to: Position[]; at: number }>({ from: null, to: snake.body, at: 0 });
+  if (move.current.to !== snake.body) move.current = { from: move.current.to, to: snake.body, at: performance.now() };
 
-/** A shaded sphere in `color`, for the head. */
-const sphere = (color: string) =>
-  `radial-gradient(circle at 35% 30%, color-mix(in srgb, ${color} 45%, white), ${color} 55%, color-mix(in srgb, ${color} 60%, black))`;
+  // Redraw on every frame until this move is finished, then rest.
+  const [, setFrame] = useState(0);
+  useEffect(() => {
+    if (!tickMs) return;
+    let raf = 0;
+    const loop = () => {
+      setFrame(f => f + 1);
+      if (performance.now() - move.current.at < tickMs) raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [snake.body, tickMs]);
 
+  const { from, to, at } = move.current;
+  const t = tickMs ? Math.min(1, (performance.now() - at) / tickMs) : 1;
+  // Each segment slides from where it was to where it is; new tail pieces, wrap-arounds and respawns don't slide.
+  const pts = to.map((p, i) => {
+    const q = from?.[i];
+    const slides = !!q && Math.abs(q.x - p.x) + Math.abs(q.y - p.y) === 1;
+    return slides ? { x: q.x + (p.x - q.x) * t + 0.5, y: q.y + (p.y - q.y) * t + 0.5 } : { x: p.x + 0.5, y: p.y + 0.5 };
+  });
+
+  const len = to.length;
+  const width = (i: number) => 0.7 - 0.32 * (len > 1 ? i / (len - 1) : 0); // slim, tapering to the tail
+  const { skin, dead } = snake;
+  const head = pts[0];
+  const gradient = `head${useId().replace(/:/g, '')}`; // unique even with several boards on screen
+
+  return (
+    <svg
+      className={`absolute inset-0 w-full h-full pointer-events-none z-10 ${snake.blink ? 'animate-pulse' : ''}`}
+      viewBox={`0 0 ${grid.cols} ${grid.rows}`}
+      preserveAspectRatio="none"
+      style={{ overflow: 'visible', filter: dead ? 'grayscale(1) brightness(0.65)' : `drop-shadow(0 0 6px ${skin.glow})` }}
+    >
+      <defs>
+        <radialGradient id={gradient} cx="35%" cy="30%" r="75%">
+          <stop offset="0%" style={{ stopColor: `color-mix(in srgb, ${skin.head} 45%, white)` }} />
+          <stop offset="55%" style={{ stopColor: skin.head }} />
+          <stop offset="100%" style={{ stopColor: `color-mix(in srgb, ${skin.head} 60%, black)` }} />
+        </radialGradient>
+      </defs>
+      {/* Tail first, so pieces nearer the head are drawn on top. */}
+      {pts.slice(1).map((b, k) => {
+        const a = pts[k];
+        if (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) > 1.5) return null; // wrapped: no line across the board
+        return <line key={k} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={skin.body(k + 1, len)} strokeWidth={width(k + 1)} strokeLinecap="round" />;
+      }).reverse()}
+      <g data-cell={`${to[0].x},${to[0].y}`} className="z-20" transform={`translate(${head.x} ${head.y}) rotate(${headAngle(to)})`}>
+        <circle r={0.45} fill={`url(#${gradient})`} />
+        {[-0.18, 0.18].map(ey => (
+          <g key={ey}>
+            <circle cx={0.14} cy={ey} r={0.14} fill="white" />
+            {dead ? (
+              <path d={`M${0.07} ${ey - 0.07}L${0.21} ${ey + 0.07}M${0.21} ${ey - 0.07}L${0.07} ${ey + 0.07}`} stroke="#111827" strokeWidth={0.045} />
+            ) : (
+              <circle cx={0.19} cy={ey} r={0.075} fill="#111827" />
+            )}
+          </g>
+        ))}
+      </g>
+    </svg>
+  );
+};
 
 /** Absolute position for cell p as % of the board, inset by `gap` px on each side. */
 export const cellStyle = (p: Position, grid: Grid, gap = 1): React.CSSProperties => ({
@@ -90,15 +140,6 @@ export const Board = ({
   grid, theme, snakes, food, golden, obstacles, shaded, accentBorder, wrapGlow,
   className = '', style, children, onTouchStart, onTouchEnd, tickMs, showGrid,
 }: BoardProps) => {
-  // Remember each snake's previous body (only when it actually changes), so a segment that moved
-  // exactly one cell glides, while wrap-arounds and respawns jump straight to their new place.
-  const track = useRef<{ body: Position[]; prev: Position[] | null }[]>([]);
-  snakes.forEach((s, si) => {
-    const t = track.current[si];
-    if (!t) track.current[si] = { body: s.body, prev: null };
-    else if (t.body !== s.body) track.current[si] = { body: s.body, prev: t.body };
-  });
-
   return (
   <div
     className={`relative @container rounded-2xl border-2 overflow-hidden shadow-2xl ${className}`}
@@ -147,67 +188,9 @@ export const Board = ({
       />
     ))}
 
-    {/* Snakes: overlapping shaded spheres that taper to the tail read as one smooth glowing body. */}
-    {snakes.map((snake, si) => {
-      const len = snake.body.length;
-      const angle = headAngle(snake.body);
-      return (
-        <div
-          key={`snake-${si}`}
-          className="absolute inset-0 z-10 pointer-events-none"
-          style={{ filter: snake.dead ? 'grayscale(1) brightness(0.65)' : `drop-shadow(0 0 6px ${snake.skin.glow})` }}
-        >
-          {snake.body.map((seg, i) => {
-            const head = i === 0;
-            const before = track.current[si]?.prev?.[i];
-            const glide = !!tickMs && !!before && Math.abs(before.x - seg.x) + Math.abs(before.y - seg.y) === 1;
-            // Slim body that tapers to the tail; the head is a little wider.
-            const size = head ? 0.92 : 0.76 - 0.26 * (len > 1 ? i / (len - 1) : 0);
-            const color = head ? snake.skin.head : snake.skin.body(i, len);
-            // A short bar to the next segment keeps the body in one piece (skipped across a wrap-around).
-            const next = snake.body[i + 1];
-            const link = next && Math.abs(next.x - seg.x) + Math.abs(next.y - seg.y) === 1
-              ? Math.atan2(next.y - seg.y, next.x - seg.x)
-              : null;
-            return (
-              <div
-                key={i}
-                data-cell={`${seg.x},${seg.y}`}
-                className={`absolute left-0 top-0 ${head ? 'z-20' : 'z-10'}`}
-                style={{
-                  width: `calc(100% / ${grid.cols})`,
-                  height: `calc(100% / ${grid.rows})`,
-                  transform: `translate(${seg.x * 100}%, ${seg.y * 100}%)`,
-                  transition: glide ? `transform ${tickMs}ms linear` : 'none',
-                  zIndex: len - i, // head on top, each segment over the one behind it
-                }}
-              >
-                {link !== null && (
-                  <div
-                    className="absolute rounded-full"
-                    style={{
-                      left: '50%',
-                      top: `${50 - size * 50}%`,
-                      width: '100%',
-                      height: `${size * 100}%`,
-                      transformOrigin: '0 50%',
-                      transform: `rotate(${link}rad)`,
-                      background: snake.skin.body(i + 1, len),
-                    }}
-                  />
-                )}
-                <div
-                  className={`absolute inset-0 rounded-full ${snake.blink ? 'animate-pulse' : ''}`}
-                  style={{ transform: `scale(${size})`, background: head ? sphere(color) : color }}
-                >
-                  {head && <Eyes angle={angle} dead={snake.dead} />}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      );
-    })}
+    {snakes.map((snake, si) => (
+      <SnakeLayer key={si} snake={snake} grid={grid} tickMs={tickMs} />
+    ))}
 
     {food && food.x >= 0 && (
       <div
