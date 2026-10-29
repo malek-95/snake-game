@@ -81,4 +81,17 @@ describe('versus', () => {
     expect(matchWinner({ ...s, wins: [2, 1] })).toBeNull();
     expect(matchWinner({ ...s, wins: [1, 3] })).toBe(1);
   });
+
+  it('passes through walls when wall passing is on', () => {
+    const base = setup(row(5, 19, 18, 17), 'RIGHT', row(15, 10, 11, 12), 'LEFT');
+    expect(stepVersus(base).result).toBe(1); // off: the wall kills player 1
+    const s = stepVersus({ ...base, wrap: true });
+    expect(s.result).toBeNull();
+    expect(s.players[0].body[0]).toEqual({ x: 0, y: 5 });
+  });
+
+  it('carries the wall setting into a new round', () => {
+    expect(newRound(grid, [0, 0], 1, true).wrap).toBe(true);
+    expect(newRound(grid).wrap).toBe(false);
+  });
 });
