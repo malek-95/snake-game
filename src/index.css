@@ -146,3 +146,17 @@
 .animate-level-complete-pop {
   animation: level-complete-pop 2s ease-out forwards;
 }
+
+/* Stars twinkling on the board. */
+@keyframes twinkle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.animate-twinkle {
+  animation: twinkle 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-twinkle { animation: none; }
+}

@@ -180,6 +180,8 @@ export interface Translations {
   worldFailed: string;
   youWinRound: string;
   youWinMatch: string;
+  updateReady: string;
+  updateNow: string;
 
   // Language selector
   language: string;
@@ -341,6 +343,8 @@ export const translations: Record<Language, Translations> = {
     worldFailed: '🌍 Envoi au classement mondial impossible',
     youWinRound: 'Tu gagnes la manche !',
     youWinMatch: 'Tu remportes le match ! 🏆',
+    updateReady: 'Nouvelle version disponible',
+    updateNow: 'Mettre à jour',
     language: '🌐 Language / Langue',
     french: '🇫🇷 Français',
     english: '🇬🇧 English',
@@ -498,6 +502,8 @@ export const translations: Record<Language, Translations> = {
     worldFailed: '🌍 Couldn’t reach the world board',
     youWinRound: 'You win the round!',
     youWinMatch: 'You win the match! 🏆',
+    updateReady: 'New version available',
+    updateNow: 'Update',
     language: '🌐 Language / Langue',
     french: '🇫🇷 Français',
     english: '🇬🇧 English',

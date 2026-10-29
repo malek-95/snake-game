@@ -9,7 +9,7 @@ export default defineConfig({
     tailwindcss(),
     // Installable app that works offline: every built file is cached, updates apply on the next launch.
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt", // src/components/UpdatePrompt.tsx asks before switching versions
       includeAssets: ["icon.svg", "apple-touch-icon.png"],
       manifest: {
         name: "Snake",

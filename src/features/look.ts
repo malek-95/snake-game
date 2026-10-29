@@ -38,6 +38,15 @@ export const SKINS: Skin[] = [
 ];
 
 export const THEMES: Theme[] = [
+  {
+    id: 'space',
+    name: { fr: 'Espace', en: 'Space' },
+    background: 'radial-gradient(ellipse at 15% 10%, rgba(76,29,149,.45), transparent 50%), radial-gradient(ellipse at 85% 90%, rgba(14,116,144,.35), transparent 50%), #02030a',
+    board: 'radial-gradient(ellipse at 25% 20%, rgba(109,40,217,.28), transparent 55%), radial-gradient(ellipse at 80% 75%, rgba(8,145,178,.22), transparent 55%), radial-gradient(ellipse at 60% 35%, rgba(219,39,119,.12), transparent 45%), #040612',
+    grid: '#818cf8',
+    gridOpacity: 0.08,
+    border: 'rgba(129,140,248,.35)',
+  },
   { id: 'midnight', name: { fr: 'Minuit', en: 'Midnight' }, background: 'linear-gradient(135deg,#0f172a,#111827 50%,#0f172a)', board: 'rgba(17,24,39,.8)', grid: '#6b7280', gridOpacity: 0.06, border: 'rgba(75,85,99,.5)' },
   { id: 'forest', name: { fr: 'Forêt', en: 'Forest' }, background: 'linear-gradient(135deg,#052e16,#0b1f15 50%,#022c22)', board: 'rgba(4,28,18,.85)', grid: '#4ade80', gridOpacity: 0.07, border: 'rgba(34,197,94,.35)' },
   { id: 'deepsea', name: { fr: 'Abysses', en: 'Deep sea' }, background: 'linear-gradient(135deg,#082f49,#0b1628 50%,#172554)', board: 'rgba(7,26,48,.85)', grid: '#38bdf8', gridOpacity: 0.08, border: 'rgba(56,189,248,.35)' },
@@ -55,7 +64,7 @@ const LOOK_KEY = 'snake-look';
 
 export const useLook = () => {
   const [look, setLook] = useState(() =>
-    loadJSON(LOOK_KEY, { skin: 'classic', theme: 'midnight' }, v =>
+    loadJSON(LOOK_KEY, { skin: 'classic', theme: 'space' }, v =>
       !!v && typeof (v as { skin: unknown }).skin === 'string' && typeof (v as { theme: unknown }).theme === 'string'));
 
   useEffect(() => {
