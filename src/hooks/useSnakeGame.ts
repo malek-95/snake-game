@@ -34,41 +34,72 @@ const generateLevelConfig = (level: number): LevelConfig => {
   const obstacles: Position[] = [];
   const applesToComplete = 5 + level * 2;
   const speedMultiplier = 1 + (level - 1) * 0.1;
+  const center = Math.floor(GRID_SIZE / 2);
+  
+  // Helper to check if position is safe (not in spawn zone)
+  const isSafe = (x: number, y: number) => {
+    // Keep center area clear for snake spawn
+    return !(x >= center - 3 && x <= center + 3 && y >= center - 2 && y <= center + 2);
+  };
+  
+  // Helper to add obstacle if safe
+  const addObstacle = (x: number, y: number) => {
+    if (isSafe(x, y) && !obstacles.some(o => o.x === x && o.y === y)) {
+      obstacles.push({ x, y });
+    }
+  };
 
-  // Generate obstacles based on level
+  // Level 1: Simple corners (6 obstacles)
   if (level >= 1) {
-    // Level 1: Simple corners
-    obstacles.push({ x: 5, y: 5 }, { x: 5, y: 6 }, { x: 6, y: 5 });
-    obstacles.push({ x: 14, y: 14 }, { x: 14, y: 13 }, { x: 13, y: 14 });
+    addObstacle(4, 4); addObstacle(4, 5); addObstacle(5, 4);
+    addObstacle(15, 15); addObstacle(15, 14); addObstacle(14, 15);
   }
   
+  // Level 2: Horizontal walls (14 obstacles)
   if (level >= 2) {
-    // Level 2: Add walls
-    for (let i = 8; i <= 12; i++) {
-      obstacles.push({ x: i, y: 3 });
+    for (let i = 6; i <= 13; i++) {
+      addObstacle(i, 3);
+    }
+    for (let i = 6; i <= 13; i++) {
+      addObstacle(i, 16);
     }
   }
   
+  // Level 3: Vertical walls + corners (16 obstacles)
   if (level >= 3) {
-    // Level 3: Add more walls
-    for (let i = 8; i <= 12; i++) {
-      obstacles.push({ x: i, y: 16 });
+    for (let i = 4; i <= 7; i++) {
+      addObstacle(3, i);
     }
-    obstacles.push({ x: 3, y: 10 }, { x: 4, y: 10 }, { x: 3, y: 11 });
-    obstacles.push({ x: 16, y: 10 }, { x: 15, y: 10 }, { x: 16, y: 11 });
+    for (let i = 12; i <= 15; i++) {
+      addObstacle(16, i);
+    }
+    addObstacle(6, 6); addObstacle(7, 7);
+    addObstacle(13, 13); addObstacle(14, 14);
   }
   
+  // Level 4: Cross pattern (16 obstacles)
   if (level >= 4) {
-    // Level 4: Maze-like
-    for (let i = 7; i <= 13; i++) {
-      if (i !== 10) obstacles.push({ x: i, y: 7 });
-      if (i !== 10) obstacles.push({ x: i, y: 12 });
+    for (let i = 5; i <= 14; i++) {
+      if (i !== center) {
+        addObstacle(i, center - 4);
+        addObstacle(i, center + 4);
+      }
     }
   }
   
+  // Level 5: Diagonal walls (20 obstacles)
   if (level >= 5) {
-    // Level 5+: Add random obstacles
-    const extraObstacles = Math.min(level - 4, 10);
+    for (let i = 0; i < 5; i++) {
+      addObstacle(3 + i, 3 + i);
+      addObstacle(16 - i, 3 + i);
+      addObstacle(3 + i, 16 - i);
+      addObstacle(16 - i, 16 - i);
+    }
+  }
+  
+  // Level 6+: Add more random obstacles based on level
+  if (level >= 6) {
+    const extraObstacles = Math.min((level - 5) * 4, 25);
     for (let i = 0; i < extraObstacles; i++) {
       let pos: Position;
       let attempts = 0;
@@ -79,12 +110,11 @@ const generateLevelConfig = (level: number): LevelConfig => {
         };
         attempts++;
       } while (
-        attempts < 50 &&
+        attempts < 100 &&
         (obstacles.some(o => o.x === pos.x && o.y === pos.y) ||
-         INITIAL_SNAKE.some(s => s.x === pos.x && s.y === pos.y) ||
-         (pos.x >= 8 && pos.x <= 12 && pos.y >= 8 && pos.y <= 12))
+         !isSafe(pos.x, pos.y))
       );
-      if (attempts < 50) obstacles.push(pos);
+      if (attempts < 100) obstacles.push(pos);
     }
   }
 
@@ -260,8 +290,20 @@ export function useSnakeGame() {
         livesRemaining: newLives,
       });
       
-      // Reset snake position
-      const newSnake = [...INITIAL_SNAKE];
+      // Keep snake size but reposition it safely
+      const currentSnake = snakeRef.current;
+      const snakeLength = currentSnake.length;
+      
+      // Create new snake with same length, starting from center going left
+      const center = Math.floor(GRID_SIZE / 2);
+      const newSnake: Position[] = [];
+      for (let i = 0; i < snakeLength; i++) {
+        const segment = { x: center - i, y: center };
+        // Make sure segment is within bounds
+        if (segment.x < 0) segment.x = 0;
+        newSnake.push(segment);
+      }
+      
       setSnake(newSnake);
       snakeRef.current = newSnake;
       
