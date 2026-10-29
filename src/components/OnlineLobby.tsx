@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { OnlineVersus } from './OnlineVersus';
 import { onlineEnabled } from '../online/client';
 import { openRoom, makeRoomCode, normalizeCode, isValidCode, type Room, type RoomError } from '../online/room';
+import { quickMatch } from '../online/quickMatch';
 import type { Skin, Theme } from '../features/look';
 import type { Difficulty } from '../types/game.types';
 import type { TFunction } from '../i18n/useTranslation';
@@ -18,7 +19,7 @@ interface Props {
   onMatchWon: () => void;
 }
 
-type Status = 'menu' | 'connecting' | 'waiting' | 'playing';
+type Status = 'menu' | 'connecting' | 'waiting' | 'searching' | 'playing';
 
 const ERROR_TEXT: Record<RoomError, 'roomNotFound' | 'roomFull' | 'connectionFailed'> = {
   notFound: 'roomNotFound',
@@ -40,6 +41,23 @@ export const OnlineLobby = ({ difficulty, skin, theme, musicOn, t, initialCode, 
   const enter = (r: Room) => {
     roomRef.current = r;
     setRoom(r);
+  };
+
+  // Quick match: pair with anyone who's looking for a game.
+  const searchRef = useRef<AbortController | null>(null);
+  useEffect(() => () => searchRef.current?.abort(), []);
+  const quick = async () => {
+    setError(null);
+    setStatus('searching');
+    const search = new AbortController();
+    searchRef.current = search;
+    try {
+      enter(await quickMatch(search.signal));
+      setStatus('playing');
+    } catch (e) {
+      if (e !== 'cancelled') setError('failed');
+      setStatus('menu');
+    }
   };
 
   const create = async () => {
@@ -111,6 +129,12 @@ export const OnlineLobby = ({ difficulty, skin, theme, musicOn, t, initialCode, 
 
       {!onlineEnabled ? (
         <div className={card}><p className="text-gray-300">{t('onlineNotSetUp')}</p></div>
+      ) : status === 'searching' ? (
+        <div className={card} role="status">
+          <p className="text-3xl animate-pulse">🔎</p>
+          <p className="text-gray-300">{t('searchingPlayer')}</p>
+          <button onClick={() => searchRef.current?.abort()} className={`${bigBtn} bg-gray-700 hover:bg-gray-600 text-base`}>{t('cancel')}</button>
+        </div>
       ) : status === 'waiting' && room ? (
         <div className={card} role="status">
           <p className="text-gray-300">{t('shareCode')}</p>
@@ -121,6 +145,9 @@ export const OnlineLobby = ({ difficulty, skin, theme, musicOn, t, initialCode, 
       ) : (
         <>
           <div className={card}>
+            <button onClick={quick} disabled={status === 'connecting'} className={`${bigBtn} bg-gradient-to-r from-amber-500 to-orange-600`}>
+              ⚡ {t('quickMatch')}
+            </button>
             <button onClick={create} disabled={status === 'connecting'} className={`${bigBtn} bg-gradient-to-r from-green-500 to-emerald-600`}>
               ➕ {t('createRoom')}
             </button>

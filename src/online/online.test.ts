@@ -3,6 +3,7 @@ import { makeRoomCode, normalizeCode, isValidCode, openRoom, type Room } from '.
 import { fetchWorldTop, submitWorldScore, fetchDailyGhost } from './worldLeaderboard';
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from './client';
+import { quickMatch } from './quickMatch';
 
 // Each player gets their own connection, like separate browsers would.
 const player = () =>
@@ -131,6 +132,24 @@ backend('online rooms (live backend)', () => {
     await until(() => !hostSeesGuest);
     host.close();
   }, 20000);
+
+  it('quick match pairs two players who start at the same moment', async () => {
+    const [a, b] = await Promise.all([
+      quickMatch(new AbortController().signal, player()),
+      quickMatch(new AbortController().signal, player()),
+    ]);
+    expect(a.code).toBe(b.code);
+    expect([a.role, b.role].sort()).toEqual(['guest', 'host']);
+    a.close();
+    b.close();
+  }, 20000);
+
+  it('quick match can be cancelled while waiting', async () => {
+    const search = new AbortController();
+    const waiting = quickMatch(search.signal, player());
+    setTimeout(() => search.abort(), 1500);
+    await expect(waiting).rejects.toBe('cancelled');
+  }, 10000);
 
   it('reports a room nobody is hosting', async () => {
     await expect(openRoom(makeRoomCode(), 'guest', 1500)).rejects.toBe('notFound');
