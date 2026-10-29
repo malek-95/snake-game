@@ -10,6 +10,8 @@ A feature-rich, modern Snake game built with React, TypeScript, and Tailwind CSS
 - 🎯 Classic Snake gameplay with smooth controls
 - 🎮 Seven game modes: Classic, Levels, Time attack, Survival, Zen, Golden apples and Custom levels
 - 👥 Local 2-player mode on one keyboard
+- 🌐 Online 2-player with room codes and invite links
+- 🌍 World leaderboard
 - ⚡ Three difficulty levels (Easy, Medium, Hard)
 - 🔄 Wall wrap-around option
 - 📱 Responsive design (Desktop & Mobile)
@@ -109,6 +111,56 @@ npm run preview
 
 📖 **Developer guide:** [QUICKSTART.md](./QUICKSTART.md)
 
+## 🌐 Online Features (Supabase)
+
+Online 2-player and the world leaderboard run on [Supabase](https://supabase.com) (free tier is plenty).
+Without it configured, the game works as before and the online buttons are hidden.
+
+### Local development
+
+Needs Docker running.
+
+```bash
+npx supabase start   # starts Postgres + Realtime and applies supabase/migrations
+npx supabase status -o env   # copy API_URL and ANON_KEY into .env.local (see .env.example)
+npm run dev
+```
+
+With `.env.local` set, `npm test` also runs the live tests against your local backend
+(score storage and the security rules, room joining, messaging, "room full" and "not found").
+
+### Cloud project
+
+1. Create a free project at supabase.com.
+2. Link and push the database schema:
+   ```bash
+   npx supabase login
+   npx supabase link --project-ref <your-project-ref>
+   npx supabase db push
+   ```
+3. Copy the **Project URL** and the **anon / publishable key** (Project Settings → API).
+   Both are public by design; the database rules only allow reading scores and adding valid ones.
+   Never put the `service_role` / secret key in the app.
+4. For local use, put them in `.env.local`. For the hosted site, add them as **repository variables**
+   (GitHub → Settings → Secrets and variables → Actions → Variables): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
+
+### How online play works
+
+- The host creates a room and shares its 4-letter code or invite link (`…/?room=ABCD`).
+- The host's browser runs the match and broadcasts each tick over Supabase Realtime; the guest sends its turns.
+- Online matches use a fixed 30×20 board so both players see the same game, and work with swipe and D-pad on phones.
+
+### Known limits
+
+- Scores are reported by the browser, so a determined player could post a fake one.
+- The guest sees moves about half a round-trip later than the host.
+- The free Supabase tier allows 2 million realtime messages a month (a 3-minute match uses about 3,600).
+
+## 🚢 Deployment
+
+Every push to `master` runs the tests and deploys to **GitHub Pages** (`.github/workflows/deploy.yml`).
+Pull requests run typecheck, tests and a build (`.github/workflows/ci.yml`).
+
 ## 🎯 How to Play
 
 ### Desktop
@@ -156,6 +208,10 @@ npm run preview
 - Player 1: **W A S D** (Z Q S D on AZERTY keyboards), Player 2: **arrow keys**
 - Crash into a wall, yourself or the other snake and you lose the round
 - First to 3 rounds wins the match
+
+#### Online
+- Play a friend on another device: create a room and share the code or link, or join with a friend's code
+- Arrow keys, WASD, swipe or the on-screen D-pad
 
 ### Scoring
 - **Easy:** 5 points per apple
@@ -271,7 +327,7 @@ achievements, replay encoding, custom level validation and storage fallbacks.
 
 ### Potential Improvements
 - [x] Progressive Web App (PWA): installable, works offline
-- [ ] Backend for online features (global leaderboard, online 2-player)
+- [x] Backend for online features (global leaderboard, online 2-player) with Supabase
 - [ ] Canvas rendering: only worth it if very long snakes ever feel slow; the HTML board is fast enough today
 - Not planned:
   - Web Workers for game logic: a tick takes microseconds, so a worker would only add input lag

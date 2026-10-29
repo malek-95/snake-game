@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal } from './Modal';
 import { boardKey, type Boards } from '../features/leaderboard';
 import { GAME_MODES, DIFFICULTIES } from '../constants/game.constants';
+import { onlineEnabled } from '../online/client';
+import { fetchWorldTop } from '../online/worldLeaderboard';
 import type { Difficulty, GameMode } from '../types/game.types';
 import type { Language } from '../i18n/translations';
 import type { TFunction } from '../i18n/useTranslation';
@@ -17,15 +19,55 @@ interface Props {
 
 const medal = (i: number) => ['🥇', '🥈', '🥉'][i] ?? `${i + 1}`;
 
-/** Top 10 scores on this device, per mode and difficulty. */
+interface Row {
+  name: string;
+  score: number;
+  apples: number;
+  date: string;
+}
+
+/** Top 10 scores per mode and difficulty: on this device, or worldwide when online play is set up. */
 export const LeaderboardModal = ({ boards, initialMode, initialDifficulty, language, t, onClose }: Props) => {
   const [mode, setMode] = useState(initialMode);
   const [difficulty, setDifficulty] = useState(initialDifficulty);
-  const entries = boards[boardKey(mode, difficulty)] ?? [];
+  const [scope, setScope] = useState<'device' | 'world'>('device');
+  const [world, setWorld] = useState<{ rows: Row[]; status: 'loading' | 'ok' | 'error' }>({ rows: [], status: 'loading' });
   const dateFmt = new Intl.DateTimeFormat(language, { day: 'numeric', month: 'short' });
+
+  useEffect(() => {
+    if (scope !== 'world') return;
+    let current = true;
+    setWorld({ rows: [], status: 'loading' });
+    fetchWorldTop(mode, difficulty)
+      .then(rows => current && setWorld({ rows: rows.map(r => ({ ...r, date: r.created_at })), status: 'ok' }))
+      .catch(() => current && setWorld({ rows: [], status: 'error' }));
+    return () => { current = false; };
+  }, [scope, mode, difficulty]);
+
+  const entries: Row[] = scope === 'world' ? world.rows : boards[boardKey(mode, difficulty)] ?? [];
+  const message =
+    scope === 'world' && world.status === 'loading' ? t('loading')
+    : scope === 'world' && world.status === 'error' ? t('serverError')
+    : entries.length === 0 ? t('noScores')
+    : null;
 
   return (
     <Modal title={t('leaderboard')} onClose={onClose} closeLabel={t('close')}>
+      {onlineEnabled && (
+        <div className="grid grid-cols-2 gap-1.5 mb-3" role="tablist">
+          {(['device', 'world'] as const).map(s => (
+            <button
+              key={s}
+              role="tab"
+              aria-selected={scope === s}
+              onClick={() => setScope(s)}
+              className={`py-2 rounded-xl text-sm font-bold transition-colors ${scope === s ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+            >
+              {s === 'device' ? t('thisDevice') : t('world')}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-1 px-1">
         {GAME_MODES.map(m => (
           <button
@@ -49,8 +91,8 @@ export const LeaderboardModal = ({ boards, initialMode, initialDifficulty, langu
         ))}
       </div>
 
-      {entries.length === 0 ? (
-        <p className="text-center text-gray-400 py-8">{t('noScores')}</p>
+      {message ? (
+        <p className="text-center text-gray-400 py-8" role="status">{message}</p>
       ) : (
         <table className="w-full text-sm">
           <thead>

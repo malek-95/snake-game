@@ -156,6 +156,28 @@ export interface Translations {
   installApp: string;
   installedApp: string;
   iosInstallHint: string;
+  online: string;
+  createRoom: string;
+  joinRoom: string;
+  roomCode: string;
+  shareCode: string;
+  copyLink: string;
+  copied: string;
+  waitingFriend: string;
+  roomNotFound: string;
+  roomFull: string;
+  connectionFailed: string;
+  opponentLeft: string;
+  onlineNotSetUp: string;
+  you: string;
+  friend: string;
+  thisDevice: string;
+  world: string;
+  loading: string;
+  serverError: string;
+  saveYourScore: string;
+  sentWorld: string;
+  worldFailed: string;
 
   // Language selector
   language: string;
@@ -293,6 +315,28 @@ export const translations: Record<Language, Translations> = {
     installApp: 'Installer le jeu',
     installedApp: '✓ Installé comme application',
     iosInstallHint: 'Sur iPhone/iPad : touche Partager, puis « Sur l’écran d’accueil ».',
+    online: '🌐 En ligne',
+    createRoom: 'Créer une partie',
+    joinRoom: 'Rejoindre',
+    roomCode: 'Code de la partie d’un ami',
+    shareCode: 'Donne ce code à ton ami :',
+    copyLink: 'Copier le lien d’invitation',
+    copied: '✓ Lien copié',
+    waitingFriend: 'En attente de ton ami…',
+    roomNotFound: 'Partie introuvable. Vérifie le code.',
+    roomFull: 'Cette partie est déjà complète.',
+    connectionFailed: 'Connexion au serveur impossible.',
+    opponentLeft: 'Ton adversaire est parti',
+    onlineNotSetUp: 'Le jeu en ligne n’est pas encore configuré sur ce site.',
+    you: 'Toi',
+    friend: 'Ami',
+    thisDevice: '📱 Cet appareil',
+    world: '🌍 Monde',
+    loading: 'Chargement…',
+    serverError: 'Serveur injoignable pour le moment.',
+    saveYourScore: 'Enregistre ton score :',
+    sentWorld: '🌍 Envoyé au classement mondial',
+    worldFailed: '🌍 Envoi au classement mondial impossible',
     language: '🌐 Language / Langue',
     french: '🇫🇷 Français',
     english: '🇬🇧 English',
@@ -426,6 +470,28 @@ export const translations: Record<Language, Translations> = {
     installApp: 'Install the game',
     installedApp: '✓ Installed as an app',
     iosInstallHint: 'On iPhone/iPad: tap Share, then “Add to Home Screen”.',
+    online: '🌐 Online',
+    createRoom: 'Create a room',
+    joinRoom: 'Join',
+    roomCode: 'A friend’s room code',
+    shareCode: 'Give this code to your friend:',
+    copyLink: 'Copy invite link',
+    copied: '✓ Link copied',
+    waitingFriend: 'Waiting for your friend…',
+    roomNotFound: 'Room not found. Check the code.',
+    roomFull: 'This room is already full.',
+    connectionFailed: 'Could not connect to the server.',
+    opponentLeft: 'Your opponent left',
+    onlineNotSetUp: 'Online play is not set up on this site yet.',
+    you: 'You',
+    friend: 'Friend',
+    thisDevice: '📱 This device',
+    world: '🌍 World',
+    loading: 'Loading…',
+    serverError: 'Can’t reach the server right now.',
+    saveYourScore: 'Save your score:',
+    sentWorld: '🌍 Sent to the world board',
+    worldFailed: '🌍 Couldn’t reach the world board',
     language: '🌐 Language / Langue',
     french: '🇫🇷 Français',
     english: '🇬🇧 English',
