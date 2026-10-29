@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { VersusView, type VersusPhase } from './VersusView';
 import { useBoardFit } from '../hooks/useBoardFit';
 import { newRound, matchWinner, randomSeed, type VersusState } from '../game/versus';
-import { RollbackSession, type InputMessage } from '../game/rollback';
+import { RollbackSession, inputDelayFor, type InputMessage } from '../game/rollback';
 import { getOppositeDirection } from '../utils/game.utils';
 import { SPEED_CONFIG, MAX_DIRECTION_QUEUE } from '../constants/game.constants';
 import type { Room } from '../online/room';
@@ -69,6 +69,7 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
   const session = useRef<RollbackSession | null>(null);
   const round = useRef(0);
   const queue = useRef<Direction[]>([]);
+  const planned = useRef<Direction | null>(null);
   const early = useRef(new Map<number, InputMessage[]>());
   const rtts = useRef<number[]>([]);
   const lastCheck = useRef(0);
@@ -83,12 +84,13 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
 
   const beginRound = useCallback((r: number, seed: number, w: [number, number], ms: number, wallPass: boolean) => {
     const start = newRound(ONLINE_GRID, w, seed, wallPass);
-    const s = new RollbackSession(start, me);
+    const s = new RollbackSession(start, me, 12, inputDelayFor(median(rtts.current), ms));
     for (const m of early.current.get(r) ?? []) s.receive(m);
     early.current.delete(r);
     session.current = s;
     round.current = r;
     queue.current = [];
+    planned.current = null;
     lastCheck.current = 0;
     theirChecks.current = [];
     setTickMs(ms);
@@ -129,7 +131,8 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
     const s = session.current;
     if (!s || phaseRef.current !== 'playing') return;
     const q = queue.current;
-    const last = q.length ? q[q.length - 1] : s.current.players[me].dir;
+    // Compare with the last turn I asked for, even if input delay hasn't applied it yet.
+    const last = q.length ? q[q.length - 1] : planned.current ?? s.current.players[me].dir;
     if (dir === last || dir === getOppositeDirection(last) || q.length >= MAX_DIRECTION_QUEUE) return;
     q.push(dir);
   }, [me]);
@@ -205,7 +208,7 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
         const turn = queue.current[0] ?? null;
         const msg = s.shouldWait(oneWayTicks) ? null : s.step(turn);
         if (msg) {
-          if (turn) queue.current.shift();
+          if (turn) planned.current = queue.current.shift()!;
           room.send('in', { r, ...msg });
         } else {
           // Waiting: repeat my latest turns so the other player can catch up.

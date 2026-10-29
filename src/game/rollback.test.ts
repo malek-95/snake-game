@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { RollbackSession, type InputMessage } from './rollback';
+import { RollbackSession, inputDelayFor, type InputMessage } from './rollback';
 import { advance, hashState, newRound, nextRandom, type VersusState } from './versus';
 import type { Direction } from '../types/game.types';
 
@@ -20,13 +20,14 @@ interface NetConfig {
   jitter: number;  // extra random ticks
   drop: number;    // chance a message is lost
   seed: number;
+  inputDelay?: [number, number]; // ticks each player schedules their turns ahead
 }
 
 /** Two players, a simulated network, random play; then let the round finish. */
-const playMatch = ({ delay, jitter, drop, seed }: NetConfig) => {
+const playMatch = ({ delay, jitter, drop, seed, inputDelay = [0, 0] }: NetConfig) => {
   const rand = rngFrom(seed);
   const initial = newRound({ cols: 80, rows: 60 }, [0, 0], seed);
-  const players = [new RollbackSession(initial, 0), new RollbackSession(initial, 1)];
+  const players = [new RollbackSession(initial, 0, 12, inputDelay[0]), new RollbackSession(initial, 1, 12, inputDelay[1])];
   let queue: { at: number; to: number; msg: InputMessage }[] = [];
 
   const send = (from: number, msg: InputMessage | null, frame: number, lossy: boolean) => {
@@ -91,6 +92,46 @@ describe('rollback netcode', () => {
   it('actually rewinds when the network is slow', () => {
     const [a, b] = playMatch({ delay: 4, jitter: 2, drop: 0, seed: 9 });
     expect(a.rollbacks + b.rollbacks).toBeGreaterThan(0);
+  });
+
+  it.each([
+    { delay: 2, jitter: 1, drop: 0.1, seed: 21, inputDelay: [2, 2] as [number, number] },
+    { delay: 1, jitter: 2, drop: 0, seed: 22, inputDelay: [0, 3] as [number, number] },
+  ])('with input delay, both players still end with the real game (input delay $inputDelay)', cfg => {
+    const [a, b] = playMatch(cfg);
+    expect(a.roundOver && b.roundOver).toBe(true);
+    const ticks = a.confirmedTick;
+    expect(b.confirmedTick).toBe(ticks);
+    const ref = reference(a.stateAt(0)!, a.myTurns(), b.myTurns(), ticks);
+    for (let t = 0; t <= ticks; t++) {
+      expect(hashState(a.stateAt(t)!)).toBe(hashState(ref[t]));
+      expect(hashState(b.stateAt(t)!)).toBe(hashState(ref[t]));
+    }
+  });
+
+  it('never has to guess when the input delay covers the network delay', () => {
+    // Messages take 2 ticks; each player schedules turns 3 ticks ahead: nothing is ever rewound,
+    // so the other player's snake never jumps.
+    const [a, b] = playMatch({ delay: 2, jitter: 0, drop: 0, seed: 31, inputDelay: [3, 3] });
+    expect(a.myTurns().filter(Boolean).length + b.myTurns().filter(Boolean).length).toBeGreaterThan(0);
+    expect(a.rollbacks + b.rollbacks).toBe(0);
+  });
+
+  it('picks the input delay from the ping: none on a good link, more on mobile, never over 3', () => {
+    expect(inputDelayFor(null, 100)).toBe(0);
+    expect(inputDelayFor(40, 100)).toBe(0);    // 20 ms each way: very fast link
+    expect(inputDelayFor(124, 100)).toBe(1);   // what we measured on a home connection
+    expect(inputDelayFor(263, 100)).toBe(2);   // bad mobile data: rounded up to cover it
+    expect(inputDelayFor(2000, 100)).toBe(3);  // capped
+  });
+
+  it('applies my turn exactly "input delay" ticks after the key press', () => {
+    const s = new RollbackSession(newRound({ cols: 30, rows: 20 }, [0, 0], 7), 0, 12, 2);
+    s.step('DOWN');
+    s.step(null);
+    expect(s.current.players[0].dir).toBe('RIGHT'); // not yet
+    s.step(null);
+    expect(s.current.players[0].dir).toBe('DOWN');  // on the 3rd tick (tick 2)
   });
 
   it('moves my own snake the moment I turn, before the other player hears about it', () => {
