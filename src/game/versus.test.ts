@@ -94,4 +94,50 @@ describe('versus', () => {
     expect(newRound(grid, [0, 0], 1, true).wrap).toBe(true);
     expect(newRound(grid).wrap).toBe(false);
   });
+
+  it('ghost: passes through walls and the other snake, then wears off', () => {
+    const base = setup(row(5, 19, 18, 17), 'RIGHT', row(15, 10, 11, 12), 'LEFT');
+    const s1 = stepVersus({ ...base, players: [{ ...base.players[0], ghost: 2 }, base.players[1]] });
+    expect(s1.result).toBeNull();
+    expect(s1.players[0].body[0]).toEqual({ x: 0, y: 5 }); // came out the other side
+    expect(s1.players[0].ghost).toBe(1);
+    // Through the other snake's body, too.
+    const cross = setup([{ x: 10, y: 4 }, { x: 10, y: 3 }, { x: 10, y: 2 }], 'DOWN', row(5, 8, 9, 10, 11), 'LEFT');
+    expect(stepVersus({ ...cross, players: [{ ...cross.players[0], ghost: 5 }, cross.players[1]] }).result).toBeNull();
+  });
+
+  it('freeze: the frozen snake stays put while the other moves', () => {
+    const base = setup(row(5, 5, 4, 3), 'RIGHT', row(15, 10, 11, 12), 'LEFT');
+    const s1 = stepVersus({ ...base, players: [base.players[0], { ...base.players[1], frozen: 2 }] });
+    expect(s1.players[1].body).toEqual(row(15, 10, 11, 12));
+    expect(s1.players[0].body[0]).toEqual({ x: 6, y: 5 });
+    expect(s1.players[1].frozen).toBe(1);
+  });
+
+  it('picking up a power-up applies it: scissors halves the other tail', () => {
+    const long = row(15, 10, 11, 12, 13, 14, 15, 16, 17);
+    const base = setup(row(5, 5, 4, 3), 'RIGHT', long, 'LEFT');
+    const s1 = stepVersus({ ...base, powerUp: { kind: 'scissors', pos: { x: 6, y: 5 } } });
+    expect(s1.powerUp).toBeNull();
+    expect(s1.players[1].body).toHaveLength(4); // 8 cells after moving, cut in half
+    const s2 = stepVersus({ ...base, powerUp: { kind: 'freeze', pos: { x: 6, y: 5 } } });
+    expect(s2.players[1].frozen).toBeGreaterThan(0);
+    const s3 = stepVersus({ ...base, powerUp: { kind: 'ghost', pos: { x: 6, y: 5 } } });
+    expect(s3.players[0].ghost).toBeGreaterThan(0);
+  });
+
+  it('power-ups appear after apples, the same way from the same seed, only when enabled', () => {
+    const spawned = (powerUps: boolean) => {
+      const found = [];
+      for (let seed = 1; seed <= 40; seed++) {
+        const base = { ...setup(row(5, 5, 4, 3), 'RIGHT', row(15, 10, 11, 12), 'LEFT', { x: 6, y: 5 }), seed, powerUps, powerUp: null };
+        found.push(stepVersus(base).powerUp);
+      }
+      return found;
+    };
+    const on = spawned(true);
+    expect(on.filter(Boolean).length).toBeGreaterThan(0);
+    expect(spawned(true)).toEqual(on);
+    expect(spawned(false).every(p => p === null)).toBe(true);
+  });
 });

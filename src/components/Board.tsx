@@ -7,6 +7,8 @@ export interface BoardSnake {
   skin: Skin;
   blink?: boolean;
   dead?: boolean;
+  /** Power-up effect: see-through ghost or icy frozen snake. */
+  effect?: 'ghost' | 'frozen';
 }
 
 interface BoardProps {
@@ -15,6 +17,8 @@ interface BoardProps {
   snakes: BoardSnake[];
   food: Position | null;
   golden?: Position | null;
+  /** Extra pick-ups shown as glowing icons (online power-ups). */
+  items?: { pos: Position; emoji: string }[];
   obstacles: Position[];
   /** Cells to tint (e.g. the editor's no-build zone). */
   shaded?: Position[];
@@ -86,7 +90,7 @@ const SnakeLayer = ({ snake, grid, tickMs }: { snake: BoardSnake; grid: Grid; ti
 
   const len = to.length;
   const width = (i: number) => 0.7 - 0.32 * (len > 1 ? i / (len - 1) : 0); // slim, tapering to the tail
-  const { skin, dead } = snake;
+  const { skin, dead, effect } = snake;
   const head = pts[0];
   const gradient = `head${useId().replace(/:/g, '')}`; // unique even with several boards on screen
 
@@ -95,7 +99,13 @@ const SnakeLayer = ({ snake, grid, tickMs }: { snake: BoardSnake; grid: Grid; ti
       className={`absolute inset-0 w-full h-full pointer-events-none z-10 ${snake.blink ? 'animate-pulse' : ''}`}
       viewBox={`0 0 ${grid.cols} ${grid.rows}`}
       preserveAspectRatio="none"
-      style={{ overflow: 'visible', filter: dead ? 'grayscale(1) brightness(0.65)' : `drop-shadow(0 0 6px ${skin.glow})` }}
+      style={{
+        overflow: 'visible',
+        opacity: effect === 'ghost' ? 0.45 : 1,
+        filter: dead ? 'grayscale(1) brightness(0.65)'
+          : effect === 'frozen' ? 'saturate(0.25) brightness(1.35) drop-shadow(0 0 6px #7dd3fc)'
+          : `drop-shadow(0 0 6px ${skin.glow})`,
+      }}
     >
       <defs>
         <radialGradient id={gradient} cx="35%" cy="30%" r="75%">
@@ -137,7 +147,7 @@ export const cellStyle = (p: Position, grid: Grid, gap = 1): React.CSSProperties
 
 /** Renders the playing field: grid lines, walls, apples and any number of snakes. */
 export const Board = ({
-  grid, theme, snakes, food, golden, obstacles, shaded, accentBorder, wrapGlow,
+  grid, theme, snakes, food, golden, items, obstacles, shaded, accentBorder, wrapGlow,
   className = '', style, children, onTouchStart, onTouchEnd, tickMs, showGrid,
 }: BoardProps) => {
   return (
@@ -200,6 +210,16 @@ export const Board = ({
         <span className="text-sm md:text-lg drop-shadow-lg">🍎</span>
       </div>
     )}
+
+    {items?.map(item => (
+      <div
+        key={`item-${item.pos.x}-${item.pos.y}`}
+        className="absolute z-10 flex items-center justify-center animate-pulse rounded-full"
+        style={{ ...cellStyle(item.pos, grid, 0), boxShadow: '0 0 14px 3px rgba(129,140,248,.55)', background: 'rgba(129,140,248,.18)' }}
+      >
+        <span className="text-sm md:text-lg">{item.emoji}</span>
+      </div>
+    ))}
 
     {golden && (
       <div

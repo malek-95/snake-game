@@ -21,12 +21,15 @@ interface NetConfig {
   drop: number;    // chance a message is lost
   seed: number;
   inputDelay?: [number, number]; // ticks each player schedules their turns ahead
+  powerUps?: boolean;
 }
 
 /** Two players, a simulated network, random play; then let the round finish. */
-const playMatch = ({ delay, jitter, drop, seed, inputDelay = [0, 0] }: NetConfig) => {
+const playMatch = ({ delay, jitter, drop, seed, inputDelay = [0, 0], powerUps = false }: NetConfig) => {
   const rand = rngFrom(seed);
-  const initial = newRound({ cols: 80, rows: 60 }, [0, 0], seed);
+  const start = newRound({ cols: 80, rows: 60 }, [0, 0], seed, false, powerUps);
+  // With power-ups on, put a freeze right in player 1's path so the match certainly uses one.
+  const initial = powerUps ? { ...start, powerUp: { kind: 'freeze' as const, pos: { x: 6, y: start.players[0].body[0].y } } } : start;
   const players = [new RollbackSession(initial, 0, 12, inputDelay[0]), new RollbackSession(initial, 1, 12, inputDelay[1])];
   let queue: { at: number; to: number; msg: InputMessage }[] = [];
 
@@ -45,7 +48,7 @@ const playMatch = ({ delay, jitter, drop, seed, inputDelay = [0, 0] }: NetConfig
     players.forEach((p, i) => {
       if (p.shouldWait(delay)) return;
       // Everyone turns once early on (so every case exercises rewinds), then plays randomly.
-      const turn = frame === 4 ? (i === 0 ? 'DOWN' : 'UP') : frame < 300 && rand() < 0.08 ? DIRS[Math.floor(rand() * 4)] : null;
+      const turn = p.tick === 4 ? (i === 0 ? 'DOWN' : 'UP') : p.tick > 4 && frame < 300 && rand() < 0.08 ? DIRS[Math.floor(rand() * 4)] : null;
       send(i, p.step(turn) ?? p.resend(), frame, lossy);
     });
     deliver(frame);
@@ -67,6 +70,8 @@ describe('rollback netcode', () => {
     { delay: 3, jitter: 3, drop: 0.15, seed: 3 },
     { delay: 6, jitter: 4, drop: 0.1, seed: 4 },
     { delay: 0, jitter: 5, drop: 0.2, seed: 5 },
+    { delay: 3, jitter: 2, drop: 0.1, seed: 6, powerUps: true },
+    { delay: 2, jitter: 3, drop: 0, seed: 7, powerUps: true, inputDelay: [1, 2] as [number, number] },
   ];
 
   it.each(configs)('both players end with the real game (delay $delay, jitter $jitter, drop $drop)', cfg => {
@@ -75,10 +80,9 @@ describe('rollback netcode', () => {
     expect(a.confirmedTick).toBe(b.confirmedTick);
 
     const ticks = a.confirmedTick;
-    // A real round was played: both players turned, and the network forced at least one rewind.
+    // A real round was played: both players turned (rewinds are checked in their own test below).
     expect(a.myTurns().filter(Boolean).length).toBeGreaterThan(0);
     expect(b.myTurns().filter(Boolean).length).toBeGreaterThan(0);
-    expect(a.rollbacks + b.rollbacks).toBeGreaterThan(0);
     const ref = reference(a.stateAt(0)!, a.myTurns(), b.myTurns(), ticks);
     for (let t = 0; t <= ticks; t++) {
       const expected = hashState(ref[t]);
@@ -87,6 +91,7 @@ describe('rollback netcode', () => {
     }
     expect(a.confirmed.result).toBe(ref[ticks].result);
     expect(a.confirmed.wins).toEqual(b.confirmed.wins);
+    if (cfg.powerUps) expect(ref.some(s => (s.players[1].frozen ?? 0) > 0)).toBe(true); // the freeze really happened
   });
 
   it('actually rewinds when the network is slow', () => {
