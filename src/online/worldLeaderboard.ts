@@ -39,12 +39,13 @@ export const fetchWorldTop = async (mode: GameMode, difficulty: Difficulty): Pro
 };
 
 /**
- * Sends a score to the world board through the submit-score server function, which checks it
- * before saving. Throws when the server can't be reached or rejects it.
+ * Sends a score to the world board through the submit-score server function, which checks it and
+ * keeps only each player's best. Returns false when the player's best was already higher.
+ * Throws when the server can't be reached or rejects the score.
  */
-export const submitWorldScore = async (s: WorldScore): Promise<void> => {
-  if (!supabase) return;
-  const { error } = await supabase.functions.invoke('submit-score', {
+export const submitWorldScore = async (s: WorldScore): Promise<boolean> => {
+  if (!supabase) return false;
+  const { data, error } = await supabase.functions.invoke('submit-score', {
     body: {
       name: cleanName(s.name),
       mode: s.mode,
@@ -57,4 +58,5 @@ export const submitWorldScore = async (s: WorldScore): Promise<void> => {
     },
   });
   if (error) throw error;
+  return data?.improved !== false;
 };

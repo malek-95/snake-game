@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
-import { qualifies, insertScore, cleanName, MAX_ENTRIES, type ScoreEntry } from './leaderboard';
+import { qualifies, insertScore, bestPerName, cleanName, MAX_ENTRIES, type ScoreEntry } from './leaderboard';
 import { newlyUnlocked, ACHIEVEMENTS, type Progress } from './achievements';
 import { encodeCell, decodeCell, obstaclesAt, type Frame } from './replay';
 import { canPlaceWall, cleanObstacles } from './customLevels';
@@ -23,9 +23,24 @@ describe('leaderboard', () => {
 
   it('keeps the list sorted and capped at 10', () => {
     let list: ScoreEntry[] = [];
-    for (const s of [30, 10, 50, 20, 40, 60, 70, 80, 90, 100, 5]) list = insertScore(list, entry(s));
+    for (const s of [30, 10, 50, 20, 40, 60, 70, 80, 90, 100, 5]) list = insertScore(list, { ...entry(s), name: `p${s}` });
     expect(list).toHaveLength(MAX_ENTRIES);
     expect(list.map(e => e.score)).toEqual([100, 90, 80, 70, 60, 50, 40, 30, 20, 10]);
+  });
+
+  it('keeps one entry per player: their best', () => {
+    const named = (name: string, score: number): ScoreEntry => ({ ...entry(score), name });
+    let list = insertScore([], named('Malek', 300));
+    list = insertScore(list, named('Ali', 350));
+    list = insertScore(list, named('malek ', 250)); // lower than Malek's best: nothing changes
+    expect(list.map(e => [e.name, e.score])).toEqual([['Ali', 350], ['Malek', 300]]);
+    list = insertScore(list, named('MALEK', 400)); // better: replaces it
+    expect(list.map(e => [e.name, e.score])).toEqual([['MALEK', 400], ['Ali', 350]]);
+  });
+
+  it('merges duplicates saved by older versions', () => {
+    const old = [entry(300), { ...entry(400), name: 'b' }, entry(500), { ...entry(200), name: 'B' }];
+    expect(bestPerName(old).map(e => [e.name, e.score])).toEqual([['a', 500], ['b', 400]]);
   });
 
   it('trims names and never stores an empty one', () => {

@@ -77,7 +77,7 @@ function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [customLevelId, setCustomLevelId] = useState<string | undefined>(customLevels.levels[0]?.id);
   const [nameInput, setNameInput] = useState(leaderboard.playerName);
-  const [saved, setSaved] = useState<{ gameId: number; rank: number; world: 'sending' | 'sent' | 'error' | null } | null>(null);
+  const [saved, setSaved] = useState<{ gameId: number; rank: number; world: 'sending' | 'sent' | 'kept' | 'error' | null } | null>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   // When the current game started, so the world board can reject impossibly fast games.
   const gameStartedAt = useRef(0);
@@ -210,7 +210,7 @@ function App() {
     setSaved({ gameId: id, rank, world: onlineEnabled ? 'sending' : null });
     if (onlineEnabled) {
       submitWorldScore({ ...entry, mode: gameMode, difficulty, golden: game.goldenEaten, durationMs: performance.now() - gameStartedAt.current })
-        .then(() => setSaved(s => (s?.gameId === id ? { ...s, world: 'sent' } : s)))
+        .then(improved => setSaved(s => (s?.gameId === id ? { ...s, world: improved ? 'sent' : 'kept' } : s)))
         .catch(() => setSaved(s => (s?.gameId === id ? { ...s, world: 'error' } : s)));
     }
   };
@@ -441,6 +441,7 @@ function App() {
                         {savedThisGame.rank > 0 && <p className="text-amber-300">🏅 {t('rankedAt')}{savedThisGame.rank}</p>}
                         {savedThisGame.world === 'sending' && <p className="text-gray-400">{t('loading')}</p>}
                         {savedThisGame.world === 'sent' && <p className="text-sky-300">{t('sentWorld')}</p>}
+                        {savedThisGame.world === 'kept' && <p className="text-gray-300">{t('worldBestKept')}</p>}
                         {savedThisGame.world === 'error' && <p className="text-red-400">{t('worldFailed')}</p>}
                       </div>
                     )}
