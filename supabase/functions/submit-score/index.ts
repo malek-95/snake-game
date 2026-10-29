@@ -2,7 +2,7 @@
 // Checks the score is possible (validate.ts), limits how often one connection can post, then keeps it
 // only if it beats the player's best (one score per player per mode and difficulty).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { validateScore } from './validate.ts';
+import { validateScore, cleanGhostPath } from './validate.ts';
 
 const MAX_PER_MINUTE = 5;
 
@@ -55,7 +55,10 @@ Deno.serve(async req => {
   const { row } = check;
   // Daily challenge scores go to today's board (the day is set by the database, not the browser).
   const { data: improved, error } = row.mode === 'daily'
-    ? await admin.rpc('submit_daily_score', { p_name: row.name, p_score: row.score, p_apples: row.apples })
+    ? await admin.rpc('submit_daily_score', {
+      p_name: row.name, p_score: row.score, p_apples: row.apples,
+      p_replay: cleanGhostPath((body as { replay?: unknown }).replay), // the run's path, for ghost races
+    })
     : await admin.rpc('submit_best_score', {
       p_name: row.name, p_mode: row.mode, p_difficulty: row.difficulty,
       p_score: row.score, p_apples: row.apples, p_level: row.level,
