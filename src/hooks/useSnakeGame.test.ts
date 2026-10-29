@@ -80,3 +80,85 @@ describe('useTranslation', () => {
     expect(result.current.t('nextBonus')).toBe('Prochain bonus:');
   });
 });
+
+describe('useSnakeGame new modes', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  const startIn = (mode: Parameters<ReturnType<typeof useSnakeGame>['changeGameMode']>[0]) => {
+    const hook = renderHook(() => useSnakeGame());
+    act(() => hook.result.current.changeGameMode(mode));
+    act(() => hook.result.current.startGame());
+    return hook;
+  };
+
+  it('zen: biting yourself cuts the tail instead of ending the game', () => {
+    const { result } = startIn('zen');
+    for (let i = 0; i < 4; i++) tick(SPEED_CONFIG.medium); // eats every tick: length 7
+    expect(result.current.snake).toHaveLength(7);
+
+    // Down, left, up: the head turns back into its own body.
+    for (const dir of ['DOWN', 'LEFT', 'UP'] as const) {
+      act(() => result.current.changeDirection(dir));
+      tick(SPEED_CONFIG.medium);
+    }
+    expect(result.current.gameState).toBe('playing');
+    expect(result.current.tailCuts).toBe(1);
+    expect(result.current.snake.length).toBeLessThan(7);
+  });
+
+  it('zen: walls wrap even with the wrap setting off', () => {
+    const { result } = startIn('zen');
+    act(() => result.current.changeDirection('UP'));
+    for (let i = 0; i < 12; i++) tick(SPEED_CONFIG.medium);
+    expect(result.current.gameState).toBe('playing');
+  });
+
+  it('golden: a golden apple is worth 5x', () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0); // always spawn a golden apple
+    const { result } = startIn('golden');
+    tick(SPEED_CONFIG.medium); // normal apple: 10 points, golden apple appears ahead
+    expect(result.current.goldenFood).not.toBeNull();
+    tick(SPEED_CONFIG.medium); // eat the golden apple
+    expect(result.current.goldenEaten).toBe(1);
+    expect(result.current.score).toBe(10 + 10 * 5);
+  });
+
+  it('survival: every apple makes the loop faster', () => {
+    const setIntervalSpy = vi.spyOn(window, 'setInterval');
+    startIn('survival');
+    tick(SPEED_CONFIG.medium);
+    tick(SPEED_CONFIG.medium);
+    expect(setIntervalSpy.mock.lastCall![1]).toBeCloseTo(SPEED_CONFIG.medium / 1.08);
+  });
+
+  it('time attack: the clock runs while playing and stops while paused', () => {
+    const { result } = startIn('timeAttack');
+    act(() => result.current.togglePause());
+    act(() => result.current.toggleWrapAround());
+    act(() => result.current.togglePause());
+    tick(1000);
+    expect(result.current.timeLeft).toBe(119);
+    act(() => result.current.togglePause());
+    tick(5000);
+    expect(result.current.timeLeft).toBe(119);
+  });
+
+  it('custom: plays the drawn walls on a 20x20 board', () => {
+    const { result } = renderHook(() => useSnakeGame());
+    act(() => result.current.setPreferredGrid({ cols: 50, rows: 24 }));
+    act(() => result.current.setCustomLevel([{ x: 2, y: 2 }, { x: 3, y: 2 }]));
+    act(() => result.current.changeGameMode('custom'));
+    act(() => result.current.startGame());
+    expect(result.current.grid).toEqual({ cols: 20, rows: 20 });
+    expect(result.current.obstacles).toEqual([{ x: 2, y: 2 }, { x: 3, y: 2 }]);
+  });
+
+  it('end game finishes a running game and new games get a new id', () => {
+    const { result } = startIn('classic');
+    const firstId = result.current.gameId;
+    act(() => result.current.endGame());
+    expect(result.current.gameState).toBe('gameover');
+    act(() => result.current.startGame());
+    expect(result.current.gameId).toBe(firstId + 1);
+  });
+});

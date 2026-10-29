@@ -1,4 +1,4 @@
-import type { GameConfig, Difficulty, Grid } from '../types/game.types';
+import type { GameConfig, Difficulty, Grid, GameMode } from '../types/game.types';
 
 // Grid configuration
 export const GRID_SIZE = 20;
@@ -35,6 +35,22 @@ export const BONUS_CONFIG = {
   maxBonusLives: 3,
 };
 
+// Time attack length (seconds)
+export const TIME_ATTACK_SECONDS = 120;
+
+// Survival: each apple makes the game this much faster (10 apples = 1.4x)
+export const SURVIVAL_SPEEDUP_PER_APPLE = 0.04;
+
+// Golden apples: chance to appear after a normal apple, lifetime in ticks, point multiplier
+export const GOLDEN_CONFIG = {
+  spawnChance: 0.25,
+  lifetimeTicks: 40,
+  pointsMultiplier: 5,
+};
+
+// Fastest allowed tick (ms)
+export const MIN_TICK_MS = 40;
+
 // Invincibility duration (in ticks)
 export const INVINCIBILITY_TICKS = 3;
 
@@ -43,3 +59,7 @@ export const MAX_DIRECTION_QUEUE = 2;
 
 // Direction debounce (milliseconds)
 export const DIRECTION_DEBOUNCE = 50;
+
+// Single-player modes, in menu order (2 players is a separate screen).
+export const GAME_MODES: GameMode[] = ['classic', 'levels', 'timeAttack', 'survival', 'zen', 'golden', 'custom'];
+export const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard'];
