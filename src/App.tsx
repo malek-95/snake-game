@@ -366,6 +366,7 @@ function App() {
             grid={grid}
             theme={theme}
             snakes={[{ body: snake, skin, blink: invincible }]}
+            tickMs={game.tickMs}
             food={food}
             golden={goldenFood}
             obstacles={obstacles}

@@ -92,6 +92,7 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
   const timeLeftRef = useRef(TIME_ATTACK_SECONDS);
   const [tailCuts, setTailCuts] = useState(0);
   const [gameId, setGameId] = useState(0);
+  const [tickMs, setTickMs] = useState(SPEED_CONFIG.medium);
   const [customObstacles, setCustomObstacles] = useState<Position[]>([]);
   const customObstaclesRef = useRef<Position[]>([]);
 
@@ -431,6 +432,7 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
       : gameMode === 'survival' ? 1 + survivalApples * SURVIVAL_SPEEDUP_PER_APPLE
       : 1;
     const actualSpeed = Math.max(MIN_TICK_MS, baseSpeed / speedMultiplier);
+    setTickMs(actualSpeed);
     gameLoopRef.current = window.setInterval(moveSnake, actualSpeed);
   }, [clearGameLoop, moveSnake, difficulty, gameMode, level, survivalApples]); // level/apples in deps: the loop restarts faster
 
@@ -605,6 +607,7 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
     goldenEaten,
     timeLeft,
     tailCuts,
+    tickMs,
     gameId,
     setCustomLevel,
     endGame,

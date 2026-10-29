@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import type { Grid, Position } from '../types/game.types';
 import type { Skin, Theme } from '../features/look';
 
@@ -25,6 +25,8 @@ interface BoardProps {
   children?: ReactNode;
   onTouchStart?: (e: React.TouchEvent) => void;
   onTouchEnd?: (e: React.TouchEvent) => void;
+  /** Length of one game tick: when set, snakes glide from cell to cell instead of jumping. */
+  tickMs?: number;
 }
 
 /** Absolute position for cell p as % of the board, inset by `gap` px on each side. */
@@ -38,8 +40,18 @@ export const cellStyle = (p: Position, grid: Grid, gap = 1): React.CSSProperties
 /** Renders the playing field: grid lines, walls, apples and any number of snakes. */
 export const Board = ({
   grid, theme, snakes, food, golden, obstacles, shaded, accentBorder, wrapGlow,
-  className = '', style, children, onTouchStart, onTouchEnd,
-}: BoardProps) => (
+  className = '', style, children, onTouchStart, onTouchEnd, tickMs,
+}: BoardProps) => {
+  // Remember each snake's previous body (only when it actually changes), so a segment that moved
+  // exactly one cell glides, while wrap-arounds and respawns jump straight to their new place.
+  const track = useRef<{ body: Position[]; prev: Position[] | null }[]>([]);
+  snakes.forEach((s, si) => {
+    const t = track.current[si];
+    if (!t) track.current[si] = { body: s.body, prev: null };
+    else if (t.body !== s.body) track.current[si] = { body: s.body, prev: t.body };
+  });
+
+  return (
   <div
     className={`relative @container rounded-2xl border-2 overflow-hidden shadow-2xl ${className}`}
     style={{ background: theme.board, borderColor: accentBorder ? 'rgba(168,85,247,.6)' : theme.border, ...style }}
@@ -82,22 +94,34 @@ export const Board = ({
       snake.body.map((seg, i) => {
         const head = i === 0;
         const fade = head ? 1 : Math.max(0.45, 1 - (i / snake.body.length) * 0.55);
+        const before = track.current[si]?.prev?.[i];
+        const glide = !!tickMs && !!before && Math.abs(before.x - seg.x) + Math.abs(before.y - seg.y) === 1;
         return (
           <div
             key={`${si}-${i}`}
-            className={`absolute rounded-md ${head ? 'z-20' : 'z-10'} ${snake.blink ? 'animate-pulse' : ''}`}
+            data-cell={`${seg.x},${seg.y}`}
+            className={`absolute left-0 top-0 ${head ? 'z-20' : 'z-10'}`}
             style={{
-              ...cellStyle(seg, grid),
-              backgroundColor: snake.dead ? '#4b5563' : head ? snake.skin.head : snake.skin.body(i, snake.body.length),
-              opacity: snake.dead ? 0.6 : fade,
-              boxShadow: head && !snake.dead ? `0 0 12px ${snake.skin.glow}` : 'none',
+              width: `calc(100% / ${grid.cols})`,
+              height: `calc(100% / ${grid.rows})`,
+              transform: `translate(${seg.x * 100}%, ${seg.y * 100}%)`,
+              transition: glide ? `transform ${tickMs}ms linear` : 'none',
             }}
           >
-            {head && (
-              <div className="w-full h-full flex items-center justify-center text-[10px] md:text-xs leading-none">
-                {snake.dead ? '😵' : '👀'}
-              </div>
-            )}
+            <div
+              className={`absolute inset-px rounded-md ${snake.blink ? 'animate-pulse' : ''}`}
+              style={{
+                backgroundColor: snake.dead ? '#4b5563' : head ? snake.skin.head : snake.skin.body(i, snake.body.length),
+                opacity: snake.dead ? 0.6 : fade,
+                boxShadow: head && !snake.dead ? `0 0 12px ${snake.skin.glow}` : 'none',
+              }}
+            >
+              {head && (
+                <div className="w-full h-full flex items-center justify-center text-[10px] md:text-xs leading-none">
+                  {snake.dead ? '😵' : '👀'}
+                </div>
+              )}
+            </div>
           </div>
         );
       }),
@@ -121,3 +145,4 @@ export const Board = ({
     {children}
   </div>
 );
+};
