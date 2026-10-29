@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { translations, type Language, type Translations } from './translations';
 
 const STORAGE_KEY = 'snake-language';
@@ -14,6 +14,10 @@ const loadLanguage = (): Language => {
 
 export const useTranslation = () => {
   const [language, setLanguageState] = useState<Language>(loadLanguage);
+
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);

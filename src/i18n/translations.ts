@@ -152,6 +152,10 @@ export interface Translations {
   firstTo: string;
   keyboardNeeded: string;
   startRound: string;
+  appSection: string;
+  installApp: string;
+  installedApp: string;
+  iosInstallHint: string;
 
   // Language selector
   language: string;
@@ -285,6 +289,10 @@ export const translations: Record<Language, Translations> = {
     firstTo: 'Premier à 3 manches',
     keyboardNeeded: 'Le mode 2 joueurs se joue au clavier.',
     startRound: 'Commencer',
+    appSection: '📲 Application',
+    installApp: 'Installer le jeu',
+    installedApp: '✓ Installé comme application',
+    iosInstallHint: 'Sur iPhone/iPad : touche Partager, puis « Sur l’écran d’accueil ».',
     language: '🌐 Language / Langue',
     french: '🇫🇷 Français',
     english: '🇬🇧 English',
@@ -414,6 +422,10 @@ export const translations: Record<Language, Translations> = {
     firstTo: 'First to 3 rounds',
     keyboardNeeded: '2-player mode is played on a keyboard.',
     startRound: 'Start',
+    appSection: '📲 App',
+    installApp: 'Install the game',
+    installedApp: '✓ Installed as an app',
+    iosInstallHint: 'On iPhone/iPad: tap Share, then “Add to Home Screen”.',
     language: '🌐 Language / Langue',
     french: '🇫🇷 Français',
     english: '🇬🇧 English',

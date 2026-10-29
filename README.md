@@ -36,6 +36,7 @@ A feature-rich, modern Snake game built with React, TypeScript, and Tailwind CSS
 ### Customization
 - 📐 Three board sizes (Small, Medium, Large)
 - 🖥️ Fullscreen mode
+- 📲 Installable app that works offline (PWA)
 - 🎨 7 snake skins and 5 color themes
 - 🎨 Modern UI with animations
 - ⚙️ Comprehensive settings menu
@@ -269,11 +270,12 @@ achievements, replay encoding, custom level validation and storage fallbacks.
 - [ ] Online multiplayer and global leaderboards (need a backend)
 
 ### Potential Improvements
-- [ ] Canvas rendering for better performance
-- [ ] Web Workers for game logic
-- [ ] Progressive Web App (PWA)
-- [ ] Mobile app (React Native)
-- [ ] Backend for online features
+- [x] Progressive Web App (PWA): installable, works offline
+- [ ] Backend for online features (global leaderboard, online 2-player)
+- [ ] Canvas rendering: only worth it if very long snakes ever feel slow; the HTML board is fast enough today
+- Not planned:
+  - Web Workers for game logic: a tick takes microseconds, so a worker would only add input lag
+  - React Native app: the PWA already installs on phones; wrap it with Capacitor if app-store listings are ever needed
 
 ## 🤝 Contributing
 
