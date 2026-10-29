@@ -90,6 +90,69 @@ export interface Translations {
   nextLevel: string;
   nextLevelEnd: string;
   
+  // Planned features
+  timeAttack: string;
+  survival: string;
+  zen: string;
+  golden: string;
+  custom: string;
+  versus: string;
+  timeAttackDescription: string;
+  survivalDescription: string;
+  zenDescription: string;
+  goldenDescription: string;
+  customDescription: string;
+  time: string;
+  endGame: string;
+  soundSection: string;
+  soundEffects: string;
+  music: string;
+  on: string;
+  off: string;
+  skin: string;
+  theme: string;
+  locked: string;
+  leaderboard: string;
+  name: string;
+  noScores: string;
+  topTen: string;
+  saveScore: string;
+  rankedAt: string;
+  achievements: string;
+  achievementUnlocked: string;
+  replay: string;
+  watchReplay: string;
+  lastGame: string;
+  bestGame: string;
+  noReplay: string;
+  close: string;
+  editor: string;
+  levelName: string;
+  clear: string;
+  back: string;
+  playLevel: string;
+  deleteLevel: string;
+  myLevels: string;
+  newLevel: string;
+  editorHelp: string;
+  confirmDelete: string;
+  chooseLevel: string;
+  noCustomLevels: string;
+  walls: string;
+  saved: string;
+  player1: string;
+  player2: string;
+  p1Controls: string;
+  p2Controls: string;
+  winsRound: string;
+  winsMatch: string;
+  draw: string;
+  nextRound: string;
+  newMatch: string;
+  firstTo: string;
+  keyboardNeeded: string;
+  startRound: string;
+
   // Language selector
   language: string;
   french: string;
@@ -161,6 +224,67 @@ export const translations: Record<Language, Translations> = {
     levelCompleteEnd: 'terminé!',
     nextLevel: 'Niveau',
     nextLevelEnd: '...',
+    timeAttack: '⏱️ Contre-la-montre',
+    survival: '⚡ Survie',
+    zen: '🧘 Zen',
+    golden: '✨ Pommes dorées',
+    custom: '🧱 Perso',
+    versus: '👥 2 joueurs',
+    timeAttackDescription: 'Mange un maximum de pommes en 2 minutes !',
+    survivalDescription: 'Chaque pomme te rend plus rapide. Tiens bon !',
+    zenDescription: 'Pas de game over : les murs se traversent et te mordre coupe ta queue.',
+    goldenDescription: 'Des pommes dorées rares valent 5x. Attrape-les avant qu’elles disparaissent !',
+    customDescription: 'Joue sur un niveau que tu as dessiné.',
+    time: 'Temps',
+    endGame: '⏹ Terminer',
+    soundSection: '🔊 Son',
+    soundEffects: 'Effets sonores',
+    music: 'Musique',
+    on: 'Activé',
+    off: 'Désactivé',
+    skin: '🎨 Skin du serpent',
+    theme: '🌈 Thème',
+    locked: 'Verrouillé',
+    leaderboard: '🏆 Classement',
+    name: 'Nom',
+    noScores: 'Aucun score pour l’instant',
+    topTen: '🏅 Top 10 ! Ton nom :',
+    saveScore: 'Enregistrer',
+    rankedAt: 'Classé n°',
+    achievements: '🎖️ Succès',
+    achievementUnlocked: 'Succès débloqué !',
+    replay: '🎬 Replay',
+    watchReplay: '🎬 Revoir',
+    lastGame: 'Dernière partie',
+    bestGame: 'Meilleure partie',
+    noReplay: 'Joue une partie pour la revoir ici.',
+    close: 'Fermer',
+    editor: '✏️ Éditeur',
+    levelName: 'Nom du niveau',
+    clear: 'Effacer',
+    back: '← Retour',
+    playLevel: '▶ Jouer',
+    deleteLevel: 'Supprimer',
+    myLevels: 'Mes niveaux',
+    newLevel: '+ Nouveau',
+    editorHelp: 'Clique ou glisse pour poser ou retirer des murs. La zone de départ (en vert) reste libre.',
+    confirmDelete: 'Supprimer ce niveau ?',
+    chooseLevel: 'Niveau perso',
+    noCustomLevels: 'Crée d’abord un niveau dans l’éditeur.',
+    walls: 'murs',
+    saved: '✓ Enregistré',
+    player1: 'Joueur 1',
+    player2: 'Joueur 2',
+    p1Controls: 'J1 : W A S D (Z Q S D)',
+    p2Controls: 'J2 : flèches',
+    winsRound: 'gagne la manche !',
+    winsMatch: 'remporte le match ! 🏆',
+    draw: 'Égalité !',
+    nextRound: 'Manche suivante',
+    newMatch: 'Nouveau match',
+    firstTo: 'Premier à 3 manches',
+    keyboardNeeded: 'Le mode 2 joueurs se joue au clavier.',
+    startRound: 'Commencer',
     language: '🌐 Language / Langue',
     french: '🇫🇷 Français',
     english: '🇬🇧 English',
@@ -229,6 +353,67 @@ export const translations: Record<Language, Translations> = {
     levelCompleteEnd: 'completed!',
     nextLevel: 'Level',
     nextLevelEnd: '...',
+    timeAttack: '⏱️ Time attack',
+    survival: '⚡ Survival',
+    zen: '🧘 Zen',
+    golden: '✨ Golden apples',
+    custom: '🧱 Custom',
+    versus: '👥 2 players',
+    timeAttackDescription: 'Eat as many apples as you can in 2 minutes!',
+    survivalDescription: 'Every apple makes you faster. Hang on!',
+    zenDescription: 'No game over: walls wrap and biting yourself cuts your tail.',
+    goldenDescription: 'Rare golden apples are worth 5x. Grab them before they fade!',
+    customDescription: 'Play a level you designed.',
+    time: 'Time',
+    endGame: '⏹ End game',
+    soundSection: '🔊 Sound',
+    soundEffects: 'Sound effects',
+    music: 'Music',
+    on: 'On',
+    off: 'Off',
+    skin: '🎨 Snake skin',
+    theme: '🌈 Theme',
+    locked: 'Locked',
+    leaderboard: '🏆 Leaderboard',
+    name: 'Name',
+    noScores: 'No scores yet',
+    topTen: '🏅 Top 10! Your name:',
+    saveScore: 'Save',
+    rankedAt: 'Ranked #',
+    achievements: '🎖️ Achievements',
+    achievementUnlocked: 'Achievement unlocked!',
+    replay: '🎬 Replay',
+    watchReplay: '🎬 Watch replay',
+    lastGame: 'Last game',
+    bestGame: 'Best game',
+    noReplay: 'Play a game to watch it here.',
+    close: 'Close',
+    editor: '✏️ Editor',
+    levelName: 'Level name',
+    clear: 'Clear',
+    back: '← Back',
+    playLevel: '▶ Play',
+    deleteLevel: 'Delete',
+    myLevels: 'My levels',
+    newLevel: '+ New',
+    editorHelp: 'Click or drag to add or remove walls. The start zone (green) stays clear.',
+    confirmDelete: 'Delete this level?',
+    chooseLevel: 'Custom level',
+    noCustomLevels: 'Create a level in the editor first.',
+    walls: 'walls',
+    saved: '✓ Saved',
+    player1: 'Player 1',
+    player2: 'Player 2',
+    p1Controls: 'P1: W A S D',
+    p2Controls: 'P2: arrow keys',
+    winsRound: 'wins the round!',
+    winsMatch: 'wins the match! 🏆',
+    draw: 'Draw!',
+    nextRound: 'Next round',
+    newMatch: 'New match',
+    firstTo: 'First to 3 rounds',
+    keyboardNeeded: '2-player mode is played on a keyboard.',
+    startRound: 'Start',
     language: '🌐 Language / Langue',
     french: '🇫🇷 Français',
     english: '🇬🇧 English',

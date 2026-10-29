@@ -28,3 +28,5 @@ export const useTranslation = () => {
 
   return { language, setLanguage, t };
 };
+
+export type TFunction = ReturnType<typeof useTranslation>['t'];
