@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  validateScore, maxScore, POINTS_PER_APPLE, TICK_MS, MULTIPLIER_EVERY, GOLDEN_FACTOR, FASTEST_TICK_MS, MODES,
+  validateScore, cleanGhostPath, MAX_GHOST_TICKS, maxScore, POINTS_PER_APPLE, TICK_MS, MULTIPLIER_EVERY, GOLDEN_FACTOR, FASTEST_TICK_MS, MODES,
 } from '../../supabase/functions/submit-score/validate.ts';
 import { SCORE_CONFIG, SPEED_CONFIG, BONUS_CONFIG, GOLDEN_CONFIG, MIN_TICK_MS, GAME_MODES } from '../constants/game.constants';
 
@@ -51,5 +51,24 @@ describe('world score rules', () => {
   it('reject anything that is not a score at all', () => {
     expect(validateScore(null)).toEqual({ ok: false, error: 'body' });
     expect(validateScore('hi')).toEqual({ ok: false, error: 'body' });
+  });
+});
+
+describe('ghost race paths', () => {
+  it('keep a well-formed path on the 20x20 board', () => {
+    const path = [[210, 209, 208], [211, 210, 209]];
+    expect(cleanGhostPath(path)).toEqual(path);
+  });
+
+  it.each([
+    ['not a list', 'nope'],
+    ['empty', []],
+    ['a cell off the board', [[400]]],
+    ['a negative cell', [[-1]]],
+    ['a fractional cell', [[1.5]]],
+    ['an empty step', [[]]],
+    ['too long', Array.from({ length: MAX_GHOST_TICKS + 1 }, () => [0])],
+  ])('drop a path that is %s', (_, path) => {
+    expect(cleanGhostPath(path)).toBeNull();
   });
 });

@@ -75,3 +75,17 @@ export const validateScore = (input: unknown): Check => {
 
   return { ok: true, row: { name, mode, difficulty, score, apples, level: level as number | null } };
 };
+
+// Ghost race: the path of a daily run, one list of snake cells (y * 20 + x) per tick.
+export const MAX_GHOST_TICKS = 6000;
+const DAILY_CELLS = 20 * 20;
+
+/** Accepts a daily run's path only if it is well-formed and on the 20x20 board; anything else is dropped. */
+export const cleanGhostPath = (input: unknown): number[][] | null => {
+  if (!Array.isArray(input) || input.length === 0 || input.length > MAX_GHOST_TICKS) return null;
+  for (const frame of input) {
+    if (!Array.isArray(frame) || frame.length === 0 || frame.length > DAILY_CELLS) return null;
+    for (const c of frame) if (!Number.isInteger(c) || c < 0 || c >= DAILY_CELLS) return null;
+  }
+  return input as number[][];
+};

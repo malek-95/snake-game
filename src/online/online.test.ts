@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { makeRoomCode, normalizeCode, isValidCode, openRoom, type Room } from './room';
-import { fetchWorldTop, submitWorldScore } from './worldLeaderboard';
+import { fetchWorldTop, submitWorldScore, fetchDailyGhost } from './worldLeaderboard';
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from './client';
 
@@ -66,6 +66,14 @@ backend('world leaderboard (live backend)', () => {
     expect(await send(90, 9)).toBe(false);
     const today = await fetchWorldTop('daily', 'medium');
     expect(today.filter(r => r.name === name).map(r => r.score)).toEqual([100]);
+  });
+
+  it('stores the best daily run so others can race its ghost', async () => {
+    const name = `gh${Date.now() % 100000}`;
+    const path = [[210, 209, 208], [211, 210, 209]];
+    await submitWorldScore({ name, mode: 'daily', difficulty: 'medium', score: 990, apples: 39, golden: 0, durationMs: 60_000, ghost: path });
+    const ghost = await fetchDailyGhost();
+    expect(ghost).toMatchObject({ name, score: 990, path });
   });
 
   it('refuses scores written straight into the database', async () => {

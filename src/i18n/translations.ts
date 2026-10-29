@@ -189,6 +189,7 @@ export interface Translations {
   daily: string;
   dailyDescription: string;
   powerUps: string;
+  racing: string;
 
   // Language selector
   language: string;
@@ -359,6 +360,7 @@ export const translations: Record<Language, Translations> = {
     daily: '📅 Défi du jour',
     dailyDescription: 'Le même niveau pour tout le monde aujourd’hui. Fais le meilleur score du jour !',
     powerUps: '⚡ Bonus spéciaux',
+    racing: 'Course contre',
     language: '🌐 Language / Langue',
     french: '🇫🇷 Français',
     english: '🇬🇧 English',
@@ -525,6 +527,7 @@ export const translations: Record<Language, Translations> = {
     daily: '📅 Daily challenge',
     dailyDescription: 'The same level for everyone today. Set the best score of the day!',
     powerUps: '⚡ Power-ups',
+    racing: 'Racing',
     language: '🌐 Language / Langue',
     french: '🇫🇷 Français',
     english: '🇬🇧 English',

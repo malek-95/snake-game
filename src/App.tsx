@@ -4,7 +4,7 @@ import { useTranslation } from './i18n/useTranslation';
 import { useBoardFit } from './hooks/useBoardFit';
 import { useInstallPrompt } from './hooks/useInstallPrompt';
 import { useAudioSettings, useGameSounds } from './hooks/useGameSounds';
-import { useLook, SKINS } from './features/look';
+import { useLook, SKINS, skinById } from './features/look';
 import { useLeaderboard, boardKey, qualifies } from './features/leaderboard';
 import { useAchievements } from './features/achievements';
 import { useReplayRecorder } from './features/replay';
@@ -19,7 +19,7 @@ import { LevelEditor } from './components/LevelEditor';
 import { VersusScreen } from './components/VersusScreen';
 import { OnlineLobby } from './components/OnlineLobby';
 import { onlineEnabled } from './online/client';
-import { submitWorldScore } from './online/worldLeaderboard';
+import { submitWorldScore, fetchDailyGhost, type DailyGhost } from './online/worldLeaderboard';
 import type { Direction, BoardSize, GameMode } from './types/game.types';
 import type { Translations } from './i18n/translations';
 
@@ -67,6 +67,22 @@ function App() {
   const customLevels = useCustomLevels();
   const install = useInstallPrompt();
   const replays = useReplayRecorder(game);
+
+  // Ghost race (daily challenge): today's best run replays beside you, one step per tick.
+  const [ghost, setGhost] = useState<DailyGhost | null>(null);
+  const ghostTick = useRef(0);
+  useEffect(() => {
+    ghostTick.current = 0;
+    if (gameMode === 'daily' && onlineEnabled) fetchDailyGhost().then(setGhost);
+    else setGhost(null);
+  }, [gameId, gameMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  const lastSnake = useRef(snake);
+  if (snake !== lastSnake.current) {
+    lastSnake.current = snake;
+    if (gameState === 'playing') ghostTick.current++;
+  }
+  const ghostCells = ghost && gameState !== 'idle' ? ghost.path[Math.min(ghostTick.current, ghost.path.length - 1)] : null;
+  const ghostBody = ghostCells?.map(c => ({ x: c % 20, y: Math.floor(c / 20) }));
   const achievements = useAchievements({
     mode: gameMode, difficulty, gameState, applesEaten, score, level, multiplier,
     goldenEaten: game.goldenEaten, length: snake.length, gameId,
@@ -211,7 +227,10 @@ function App() {
     const id = gameId;
     setSaved({ gameId: id, rank, world: onlineEnabled ? 'sending' : null });
     if (onlineEnabled) {
-      submitWorldScore({ ...entry, mode: gameMode, difficulty: scoreDifficulty, golden: game.goldenEaten, durationMs: performance.now() - gameStartedAt.current })
+      submitWorldScore({
+        ...entry, mode: gameMode, difficulty: scoreDifficulty, golden: game.goldenEaten, durationMs: performance.now() - gameStartedAt.current,
+        ghost: gameMode === 'daily' && replays.lastReplay?.mode === 'daily' ? replays.lastReplay.frames.map(f => f.s) : undefined,
+      })
         .then(improved => setSaved(s => (s?.gameId === id ? { ...s, world: improved ? 'sent' : 'kept' } : s)))
         .catch(() => setSaved(s => (s?.gameId === id ? { ...s, world: 'error' } : s)));
     }
@@ -367,12 +386,18 @@ function App() {
           </div>
         </div>
 
+        {ghost && gameMode === 'daily' && (
+          <p className="text-sm text-gray-300 shrink-0" role="status">👻 {t('racing')} <b className="text-white">{ghost.name}</b>: {ghost.score}</p>
+        )}
         {/* Game Board */}
         <div ref={areaRef} className={fill ? 'flex-1 min-h-[16rem] w-full px-2 flex items-center justify-center' : 'w-full flex justify-center'}>
           <Board
             grid={grid}
             theme={theme}
-            snakes={[{ body: snake, skin, blink: invincible }]}
+            snakes={[
+              ...(ghostBody ? [{ body: ghostBody, skin: skinById('ghost'), effect: 'ghost' as const }] : []),
+              { body: snake, skin, blink: invincible },
+            ]}
             tickMs={game.tickMs}
             food={food}
             golden={goldenFood}
