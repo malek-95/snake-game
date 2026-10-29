@@ -2,7 +2,7 @@
 export type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type GameState = 'idle' | 'playing' | 'paused' | 'gameover';
-export type GameMode = 'classic' | 'levels';
+export type GameMode = 'classic' | 'levels' | 'timeAttack' | 'survival' | 'zen' | 'golden' | 'custom';
 export type BoardSize = 'small' | 'medium' | 'large';
 export type Language = 'fr' | 'en';
 
@@ -82,6 +82,17 @@ export interface UseSnakeGameReturn extends GameStateData {
   lifeLostEvent: LifeLostEvent | null;
   lifeGainedEvent: LifeGainedEvent | null;
   levelCompleteEvent: LevelCompleteEvent | null;
+  /** Rare bonus apple in golden mode, null when none is on the board. */
+  goldenFood: Position | null;
+  goldenEaten: number;
+  /** Seconds left in time attack. */
+  timeLeft: number;
+  /** Times the snake bit itself in zen mode (it loses its tail instead of dying). */
+  tailCuts: number;
+  /** Increments on every startGame, so listeners can tell a restart from a continuing game. */
+  gameId: number;
+  setCustomLevel: (obstacles: Position[]) => void;
+  endGame: () => void;
   startGame: () => void;
   togglePause: () => void;
   changeDirection: (dir: Direction) => void;
