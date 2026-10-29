@@ -34,6 +34,7 @@ interface Props {
   customLevelId?: string;
   setCustomLevelId: (id: string) => void;
   onOpenEditor: () => void;
+  install: { canInstall: boolean; installed: boolean; install: () => void; showIOSHint: boolean };
   onClose: () => void;
 }
 
@@ -171,6 +172,20 @@ export const SettingsModal = (p: Props) => {
             ))}
           </div>
         </Section>
+
+        {(p.install.canInstall || p.install.installed || p.install.showIOSHint) && (
+          <Section label={t('appSection')}>
+            {p.install.installed ? (
+              <p className="text-sm text-green-400 font-semibold">{t('installedApp')}</p>
+            ) : p.install.canInstall ? (
+              <button onClick={p.install.install} className={chip(false, 'w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white')}>
+                📲 {t('installApp')}
+              </button>
+            ) : (
+              <p className="text-xs text-gray-400">{t('iosInstallHint')}</p>
+            )}
+          </Section>
+        )}
 
         <Section label={t('display')}>
           <button onClick={p.toggleFullscreen} className={chip(p.isFullscreen, 'w-full')}>
