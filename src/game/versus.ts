@@ -1,5 +1,5 @@
 import type { Direction, Grid, Position } from '../types/game.types';
-import { getNextPosition, getOppositeDirection, isOutOfBounds } from '../utils/game.utils';
+import { getNextPosition, getOppositeDirection, isOutOfBounds, wrapPosition } from '../utils/game.utils';
 import { MAX_DIRECTION_QUEUE } from '../constants/game.constants';
 
 /**
@@ -27,6 +27,8 @@ export interface VersusState {
   wins: [number, number];
   /** Random generator state for food placement. */
   seed: number;
+  /** Snakes pass through walls and come out the other side. */
+  wrap?: boolean;
 }
 
 /** Turns made by each player on one tick (null = kept going straight). */
@@ -59,11 +61,11 @@ const makePlayer = (x: number, y: number, dir: Direction): Player => {
 };
 
 /** New round: player 1 on the left heading right, player 2 on the right heading left, on different rows. */
-export const newRound = (grid: Grid, wins: [number, number] = [0, 0], seed = randomSeed()): VersusState => {
+export const newRound = (grid: Grid, wins: [number, number] = [0, 0], seed = randomSeed(), wrap = false): VersusState => {
   const p1 = makePlayer(4, Math.floor(grid.rows / 3), 'RIGHT');
   const p2 = makePlayer(grid.cols - 5, Math.floor((grid.rows * 2) / 3), 'LEFT');
   const [food, next] = placeFood([...p1.body, ...p2.body], grid, seed);
-  return { grid, players: [p1, p2], food, result: null, wins, seed: next };
+  return { grid, players: [p1, p2], food, result: null, wins, seed: next, wrap };
 };
 
 export const queueTurn = (state: VersusState, player: 0 | 1, dir: Direction): VersusState => {
@@ -83,7 +85,8 @@ export const stepVersus = (state: VersusState): VersusState => {
 
   const moves = state.players.map(p => {
     const dir = p.queue[0] ?? p.dir;
-    const head = getNextPosition(p.body[0], dir);
+    const next = getNextPosition(p.body[0], dir);
+    const head = state.wrap && isOutOfBounds(next, state.grid) ? wrapPosition(next, state.grid) : next;
     return { dir, queue: p.queue.slice(1), head, eats: same(head, state.food) };
   });
 
