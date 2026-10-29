@@ -17,10 +17,17 @@ import { AchievementToasts } from './components/AchievementToasts';
 import { ReplayViewer } from './components/ReplayViewer';
 import { LevelEditor } from './components/LevelEditor';
 import { VersusScreen } from './components/VersusScreen';
+import { OnlineLobby } from './components/OnlineLobby';
+import { onlineEnabled } from './online/client';
+import { submitWorldScore } from './online/worldLeaderboard';
 import type { Direction, BoardSize, GameMode } from './types/game.types';
 import type { Translations } from './i18n/translations';
 
-type Screen = 'game' | 'versus' | 'editor';
+type Screen = 'game' | 'versus' | 'editor' | 'online';
+
+// An invite link (?room=ABCD) opens the online lobby and joins that room.
+const inviteCode = new URLSearchParams(location.search).get('room') ?? undefined;
+if (inviteCode) history.replaceState(null, '', location.pathname);
 type ModalName = 'settings' | 'leaderboard' | 'achievements' | 'replay' | null;
 
 const KEY_DIRECTIONS: Record<string, Direction> = {
@@ -64,13 +71,13 @@ function App() {
     goldenEaten: game.goldenEaten, length: snake.length, gameId,
   });
 
-  const [screen, setScreen] = useState<Screen>('game');
+  const [screen, setScreen] = useState<Screen>(inviteCode ? 'online' : 'game');
   const [modal, setModal] = useState<ModalName>(null);
   const [boardSize, setBoardSize] = useState<BoardSize>('medium');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [customLevelId, setCustomLevelId] = useState<string | undefined>(customLevels.levels[0]?.id);
   const [nameInput, setNameInput] = useState(leaderboard.playerName);
-  const [savedRank, setSavedRank] = useState<{ gameId: number; rank: number } | null>(null);
+  const [saved, setSaved] = useState<{ gameId: number; rank: number; world: 'sending' | 'sent' | 'error' | null } | null>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -166,12 +173,12 @@ function App() {
     large: '',
   };
 
-  // Mode picking: 2 players is its own screen.
-  const selectMode = (mode: GameMode | 'versus') => {
-    if (mode === 'versus') {
+  // Mode picking: 2 players (local or online) has its own screen.
+  const selectMode = (mode: GameMode | 'versus' | 'online') => {
+    if (mode === 'versus' || mode === 'online') {
       if (gameState === 'playing') togglePause();
       setModal(null);
-      setScreen('versus');
+      setScreen(mode);
     } else {
       changeGameMode(mode);
     }
@@ -187,18 +194,39 @@ function App() {
 
   // Leaderboard entry at game over.
   const lbKey = boardKey(gameMode, difficulty);
-  const savedThisGame = savedRank?.gameId === gameId ? savedRank.rank : 0;
-  const canSaveScore = gameState === 'gameover' && !savedThisGame && qualifies(leaderboard.boards[lbKey] ?? [], score);
+  const savedThisGame = saved?.gameId === gameId ? saved : null;
+  const qualifiesHere = qualifies(leaderboard.boards[lbKey] ?? [], score);
+  // Any score can go to the world board; only top-10 scores are kept on this device.
+  const canSaveScore = gameState === 'gameover' && !savedThisGame && score > 0 && (qualifiesHere || onlineEnabled);
   const saveScore = () => {
-    const rank = leaderboard.addScore(lbKey, {
-      name: nameInput,
-      score,
-      apples: applesEaten,
-      level: gameMode === 'levels' ? level : undefined,
-      date: new Date().toISOString(),
-    });
-    setSavedRank({ gameId, rank });
+    const entry = { name: nameInput, score, apples: applesEaten, level: gameMode === 'levels' ? level : undefined };
+    const rank = qualifiesHere ? leaderboard.addScore(lbKey, { ...entry, date: new Date().toISOString() }) : 0;
+    const id = gameId;
+    setSaved({ gameId: id, rank, world: onlineEnabled ? 'sending' : null });
+    if (onlineEnabled) {
+      submitWorldScore({ ...entry, mode: gameMode, difficulty })
+        .then(() => setSaved(s => (s?.gameId === id ? { ...s, world: 'sent' } : s)))
+        .catch(() => setSaved(s => (s?.gameId === id ? { ...s, world: 'error' } : s)));
+    }
   };
+
+  if (screen === 'online') {
+    return (
+      <>
+        <OnlineLobby
+          difficulty={difficulty}
+          skin={skin}
+          theme={theme}
+          musicOn={audio.music}
+          t={t}
+          initialCode={inviteCode}
+          onExit={() => setScreen('game')}
+          onMatchWon={achievements.recordVersusWin}
+        />
+        <AchievementToasts toasts={achievements.toasts} dismiss={achievements.dismissToast} language={language} t={t} />
+      </>
+    );
+  }
 
   if (screen === 'versus') {
     return (
@@ -388,7 +416,7 @@ function App() {
 
                     {canSaveScore && (
                       <form className="mb-3 flex flex-col items-center gap-2" onSubmit={e => { e.preventDefault(); saveScore(); }}>
-                        <label htmlFor="player-name" className="text-amber-200 text-sm font-semibold">{t('topTen')}</label>
+                        <label htmlFor="player-name" className="text-amber-200 text-sm font-semibold">{qualifiesHere ? t('topTen') : t('saveYourScore')}</label>
                         <div className="flex gap-2">
                           <input
                             id="player-name"
@@ -402,7 +430,14 @@ function App() {
                         </div>
                       </form>
                     )}
-                    {savedThisGame > 0 && <p className="mb-3 text-amber-300 font-semibold text-sm">🏅 {t('rankedAt')}{savedThisGame}</p>}
+                    {savedThisGame && (
+                      <div className="mb-3 text-sm font-semibold space-y-0.5" role="status">
+                        {savedThisGame.rank > 0 && <p className="text-amber-300">🏅 {t('rankedAt')}{savedThisGame.rank}</p>}
+                        {savedThisGame.world === 'sending' && <p className="text-gray-400">{t('loading')}</p>}
+                        {savedThisGame.world === 'sent' && <p className="text-sky-300">{t('sentWorld')}</p>}
+                        {savedThisGame.world === 'error' && <p className="text-red-400">{t('worldFailed')}</p>}
+                      </div>
+                    )}
 
                     <div className="flex gap-2 flex-wrap justify-center">
                       <button onClick={startGame} className="bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all px-6 py-3">

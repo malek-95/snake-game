@@ -2,6 +2,7 @@ import { Modal } from './Modal';
 import { SKINS, THEMES, type Skin, type Theme } from '../features/look';
 import { GAME_MODES, DIFFICULTIES } from '../constants/game.constants';
 import type { CustomLevel } from '../features/customLevels';
+import { onlineEnabled } from '../online/client';
 import type { BoardSize, Difficulty, GameMode } from '../types/game.types';
 import type { Language } from '../i18n/translations';
 import type { TFunction } from '../i18n/useTranslation';
@@ -12,7 +13,7 @@ interface Props {
   setLanguage: (l: Language) => void;
   locked: boolean;                 // a game is running: mode/difficulty/wrap can't change
   gameMode: GameMode;
-  onSelectMode: (mode: GameMode | 'versus') => void;
+  onSelectMode: (mode: GameMode | 'versus' | 'online') => void;
   difficulty: Difficulty;
   changeDifficulty: (d: Difficulty) => void;
   wrapAround: boolean;
@@ -73,6 +74,11 @@ export const SettingsModal = (p: Props) => {
             <button onClick={() => p.onSelectMode('versus')} className={chip(false, 'bg-gradient-to-r from-fuchsia-600/70 to-orange-500/70 text-white')}>
               {t('versus')}
             </button>
+            {onlineEnabled && (
+              <button onClick={() => p.onSelectMode('online')} className={chip(false, 'col-span-2 bg-gradient-to-r from-sky-600/80 to-indigo-600/80 text-white')}>
+                {t('online')}
+              </button>
+            )}
           </div>
           {p.gameMode === 'custom' && (
             <div className="mt-2 space-y-2">
