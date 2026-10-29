@@ -12,6 +12,11 @@ export interface Position {
   y: number;
 }
 
+export interface Grid {
+  cols: number;
+  rows: number;
+}
+
 // Game configuration
 export interface GameConfig {
   gridSize: number;
@@ -71,7 +76,8 @@ export interface GameStateData {
 
 // Hook return type
 export interface UseSnakeGameReturn extends GameStateData {
-  gridSize: number;
+  grid: Grid;
+  setPreferredGrid: (grid: Grid) => void;
   bonusEvent: BonusEvent | null;
   lifeLostEvent: LifeLostEvent | null;
   lifeGainedEvent: LifeGainedEvent | null;

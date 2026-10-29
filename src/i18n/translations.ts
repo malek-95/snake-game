@@ -79,6 +79,7 @@ export interface Translations {
   
   // Notifications
   bonusNotification: string;
+  nextBonus: string;
   lifeLost: string;
   remaining2: string;
   lifeGained: string;
@@ -150,6 +151,7 @@ export const translations: Record<Language, Translations> = {
     newRecord: '🏆 Nouveau record!',
     playAgain: '🔄 Rejouer',
     bonusNotification: '🎉 BONUS!',
+    nextBonus: 'Prochain bonus:',
     lifeLost: '💔 Vie perdue!',
     remaining2: 'restantes',
     lifeGained: '💚 +1 Vie!',
@@ -217,6 +219,7 @@ export const translations: Record<Language, Translations> = {
     newRecord: '🏆 New record!',
     playAgain: '🔄 Play Again',
     bonusNotification: '🎉 BONUS!',
+    nextBonus: 'Next bonus:',
     lifeLost: '💔 Life lost!',
     remaining2: 'remaining',
     lifeGained: '💚 +1 Life!',

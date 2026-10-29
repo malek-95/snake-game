@@ -1,5 +1,23 @@
-import type { Position, Direction, LevelConfig } from '../types/game.types';
-import { GRID_SIZE, INITIAL_SNAKE } from '../constants/game.constants';
+import type { Position, Direction, LevelConfig, Grid } from '../types/game.types';
+import { GRID_SIZE, DEFAULT_GRID, TARGET_CELL_PX } from '../constants/game.constants';
+
+/**
+ * Grid that fills a w x h pixel area with square cells, never fewer than 20 cells per side.
+ */
+export const gridForArea = (w: number, h: number): Grid => {
+  const cell = Math.min(TARGET_CELL_PX, w / GRID_SIZE, h / GRID_SIZE);
+  if (!(cell > 0)) return DEFAULT_GRID;
+  return { cols: Math.floor(w / cell), rows: Math.floor(h / cell) };
+};
+
+/**
+ * 3-long snake in the middle of the grid, facing right.
+ */
+export const initialSnake = (grid: Grid = DEFAULT_GRID): Position[] => {
+  const x = Math.floor(grid.cols / 2);
+  const y = Math.floor(grid.rows / 2);
+  return [{ x, y }, { x: x - 1, y }, { x: x - 2, y }];
+};
 
 /**
  * Check if a position is safe (not in spawn zone)
@@ -13,24 +31,19 @@ export const isSafePosition = (x: number, y: number, center: number): boolean =>
  */
 export const getRandomPosition = (
   snake: Position[],
-  obstacles: Position[] = []
+  obstacles: Position[] = [],
+  grid: Grid = DEFAULT_GRID
 ): Position => {
-  let pos: Position;
-  let attempts = 0;
-  
-  do {
-    pos = {
-      x: Math.floor(Math.random() * GRID_SIZE),
-      y: Math.floor(Math.random() * GRID_SIZE),
-    };
-    attempts++;
-    if (attempts > 100) break;
-  } while (
-    snake.some(segment => segment.x === pos.x && segment.y === pos.y) ||
-    obstacles.some(obs => obs.x === pos.x && obs.y === pos.y)
-  );
-  
-  return pos;
+  const taken = new Set([...snake, ...obstacles].map(p => `${p.x},${p.y}`));
+  const free: Position[] = [];
+  for (let y = 0; y < grid.rows; y++) {
+    for (let x = 0; x < grid.cols; x++) {
+      if (!taken.has(`${x},${y}`)) free.push({ x, y });
+    }
+  }
+  // shortcut: a completely full board puts food off-grid (unreachable); add a "you win" state if that ever matters.
+  if (free.length === 0) return { x: -1, y: -1 };
+  return free[Math.floor(Math.random() * free.length)];
 };
 
 /**
@@ -52,17 +65,17 @@ export const getNextPosition = (current: Position, direction: Direction): Positi
 /**
  * Check if position is out of bounds
  */
-export const isOutOfBounds = (pos: Position): boolean => {
-  return pos.x < 0 || pos.x >= GRID_SIZE || pos.y < 0 || pos.y >= GRID_SIZE;
+export const isOutOfBounds = (pos: Position, grid: Grid = DEFAULT_GRID): boolean => {
+  return pos.x < 0 || pos.x >= grid.cols || pos.y < 0 || pos.y >= grid.rows;
 };
 
 /**
  * Wrap position around the grid
  */
-export const wrapPosition = (pos: Position): Position => {
+export const wrapPosition = (pos: Position, grid: Grid = DEFAULT_GRID): Position => {
   return {
-    x: (pos.x + GRID_SIZE) % GRID_SIZE,
-    y: (pos.y + GRID_SIZE) % GRID_SIZE,
+    x: (pos.x + grid.cols) % grid.cols,
+    y: (pos.y + grid.rows) % grid.rows,
   };
 };
 
@@ -184,16 +197,18 @@ export const generateLevelConfig = (level: number): LevelConfig => {
  */
 export const findSafeSpawnPosition = (
   snakeLength: number,
-  obstacles: Position[]
+  obstacles: Position[],
+  grid: Grid = DEFAULT_GRID
 ): { x: number; y: number } | null => {
-  const center = Math.floor(GRID_SIZE / 2);
+  const centerX = Math.floor(grid.cols / 2);
+  const centerY = Math.floor(grid.rows / 2);
   
   for (let offsetY = -3; offsetY <= 3; offsetY++) {
     for (let offsetX = -3; offsetX <= 5; offsetX++) {
-      const testX = center + offsetX;
-      const testY = center + offsetY;
+      const testX = centerX + offsetX;
+      const testY = centerY + offsetY;
       
-      if (testX < 0 || testX >= GRID_SIZE || testY < 0 || testY >= GRID_SIZE) continue;
+      if (testX < 0 || testX >= grid.cols || testY < 0 || testY >= grid.rows) continue;
       
       let fits = true;
       for (let i = 0; i < snakeLength && fits; i++) {
@@ -207,7 +222,7 @@ export const findSafeSpawnPosition = (
       if (fits) {
         for (let ahead = 1; ahead <= 3; ahead++) {
           const aheadX = testX + ahead;
-          if (aheadX >= GRID_SIZE || obstacles.some(obs => obs.x === aheadX && obs.y === testY)) {
+          if (aheadX >= grid.cols || obstacles.some(obs => obs.x === aheadX && obs.y === testY)) {
             fits = false;
             break;
           }
