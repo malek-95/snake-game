@@ -183,6 +183,9 @@ export interface Translations {
   updateReady: string;
   updateNow: string;
   worldBestKept: string;
+  rematch: string;
+  friendWantsRematch: string;
+  reactions: string;
 
   // Language selector
   language: string;
@@ -347,6 +350,9 @@ export const translations: Record<Language, Translations> = {
     updateReady: 'Nouvelle version disponible',
     updateNow: 'Mettre à jour',
     worldBestKept: '🌍 Ton record mondial reste plus haut',
+    rematch: 'Revanche',
+    friendWantsRematch: 'Ton ami veut une revanche !',
+    reactions: 'Réactions',
     language: '🌐 Language / Langue',
     french: '🇫🇷 Français',
     english: '🇬🇧 English',
@@ -507,6 +513,9 @@ export const translations: Record<Language, Translations> = {
     updateReady: 'New version available',
     updateNow: 'Update',
     worldBestKept: '🌍 Your world best is still higher',
+    rematch: 'Rematch',
+    friendWantsRematch: 'Your friend wants a rematch!',
+    reactions: 'Reactions',
     language: '🌐 Language / Langue',
     french: '🇫🇷 Français',
     english: '🇬🇧 English',

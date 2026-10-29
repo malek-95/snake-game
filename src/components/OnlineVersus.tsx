@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { VersusView, type VersusPhase } from './VersusView';
+import { VersusView, REACTIONS, type VersusPhase, type ReactionBubble } from './VersusView';
 import { useBoardFit } from '../hooks/useBoardFit';
 import { newRound, matchWinner, randomSeed, type VersusState } from '../game/versus';
 import { RollbackSession, inputDelayFor, type InputMessage } from '../game/rollback';
@@ -69,6 +69,14 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
   const session = useRef<RollbackSession | null>(null);
   const round = useRef(0);
   const queue = useRef<Direction[]>([]);
+  // Rematch: both players have to ask for it.
+  const [rematch, setRematch] = useState({ me: false, them: false });
+  const rematchRef = useRef(rematch);
+  rematchRef.current = rematch;
+  // Emoji reaction bubbles, each shown for a moment.
+  const [bubbles, setBubbles] = useState<ReactionBubble[]>([]);
+  const bubbleId = useRef(0);
+  const lastReaction = useRef(0);
   const planned = useRef<Direction | null>(null);
   const early = useRef(new Map<number, InputMessage[]>());
   const rtts = useRef<number[]>([]);
@@ -98,8 +106,23 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
     setView(start);
     setEnded(null);
     setWins(w);
+    setRematch({ me: false, them: false });
     setPhase('playing');
   }, [me]);
+
+  const showBubble = useCallback((from: 0 | 1, emoji: string) => {
+    const id = ++bubbleId.current;
+    setBubbles(b => [...b.slice(-4), { id, from, emoji }]);
+    setTimeout(() => setBubbles(b => b.filter(x => x.id !== id)), 2200);
+  }, []);
+
+  const sendReaction = useCallback((emoji: string) => {
+    const now = performance.now();
+    if (now - lastReaction.current < 600) return; // no spamming
+    lastReaction.current = now;
+    showBubble(me, emoji);
+    room.send('react', { e: emoji });
+  }, [me, room, showBubble]);
 
   // Host: pick the seed and start; begin half a round trip later, when the guest receives it.
   const hostStartRound = useCallback(() => {
@@ -122,6 +145,14 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
   }, [room]);
 
   const onStart = useCallback(() => {
+    const finished = endedRef.current;
+    if (finished && matchWinner(finished) !== null) {
+      // Match over: ask for a rematch; it starts once both players asked.
+      setRematch(r => ({ ...r, me: true }));
+      room.send('rematch', {});
+      if (isHost && rematchRef.current.them) hostStartRound();
+      return;
+    }
     if (isHost) hostStartRound();
     else room.send('start', {});
   }, [isHost, hostStartRound, room]);
@@ -159,6 +190,13 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
             break;
           case 'settings':
             if (!isHost) setWrap(!!p.wrap);
+            break;
+          case 'react':
+            if (REACTIONS.includes(p.e as (typeof REACTIONS)[number])) showBubble(me === 0 ? 1 : 0, p.e as string);
+            break;
+          case 'rematch':
+            setRematch(rm => ({ ...rm, them: true }));
+            if (isHost && rematchRef.current.me) hostStartRef.current();
             break;
           case 'start':
             if (isHost && phaseRef.current !== 'playing') hostStartRef.current();
@@ -262,11 +300,13 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
         onStart();
       } else if (e.key === 'Escape') {
         onExit();
+      } else if (/^[1-6]$/.test(e.key) && !peerGone) {
+        sendReaction(REACTIONS[Number(e.key) - 1]);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onTurn, onStart, onExit, peerGone]);
+  }, [onTurn, onStart, onExit, peerGone, sendReaction]);
 
   return (
     <VersusView
@@ -286,6 +326,8 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
       peerGone={peerGone}
       wrap={wrap}
       onToggleWrap={isHost ? toggleWrap : undefined}
+      rematch={rematch}
+      reactions={{ send: sendReaction, bubbles }}
       onStart={onStart}
       onExit={onExit}
       onMatchWon={onMatchWon}

@@ -32,6 +32,10 @@ interface Props {
   wrap: boolean;
   /** Who may change it (local players, online host); others just see the setting. */
   onToggleWrap?: () => void;
+  /** Online: once the match is won, both players must ask for a rematch. */
+  rematch?: { me: boolean; them: boolean };
+  /** Online: emoji reactions to send, and the bubbles currently shown. */
+  reactions?: { send: (emoji: string) => void; bubbles: ReactionBubble[] };
   onStart: () => void;
   onExit: () => void;
   onMatchWon: () => void;
@@ -41,9 +45,18 @@ interface Props {
 
 const ARROWS: Record<Direction, string> = { UP: '▲', DOWN: '▼', LEFT: '◀', RIGHT: '▶' };
 
+/** The only reactions players can send; anything else received is ignored. */
+export const REACTIONS = ['👍', '😂', '🔥', '😱', '😎', 'GG'] as const;
+
+export interface ReactionBubble {
+  id: number;
+  from: 0 | 1;
+  emoji: string;
+}
+
 export const VersusView = ({
   state, ended, wins, phase, myIndex, fit, tickMs, skin, theme, musicOn, t,
-  roomCode, pingMs, peerGone, wrap, onToggleWrap, onStart, onExit, onMatchWon, onTurn,
+  roomCode, pingMs, peerGone, wrap, onToggleWrap, rematch, reactions, onStart, onExit, onMatchWon, onTurn,
 }: Props) => {
   const skins = [skin, rivalSkin(skin)];
 
@@ -104,7 +117,12 @@ export const VersusView = ({
         <button onClick={onExit} className="px-3 py-2 rounded-xl text-sm font-bold bg-gray-700/70 text-white hover:bg-gray-600">{t('back')}</button>
         <div className="flex items-center gap-3 md:gap-6">
           {[0, 1].map(i => (
-            <div key={i} className={`flex items-center gap-2 bg-gray-800/70 border rounded-xl px-3 py-1.5 ${i === myIndex ? 'border-cyan-400/60' : 'border-gray-700'}`}>
+            <div key={i} className={`relative flex items-center gap-2 bg-gray-800/70 border rounded-xl px-3 py-1.5 ${i === myIndex ? 'border-cyan-400/60' : 'border-gray-700'}`}>
+              {reactions?.bubbles.filter(b => b.from === i).slice(-1).map(b => (
+                <span key={b.id} className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-40 animate-bonus-pop pointer-events-none bg-gray-900/90 border border-gray-600 rounded-full px-2.5 py-1 text-xl font-black text-white shadow-lg">
+                  {b.emoji}
+                </span>
+              ))}
               <span className="w-3 h-3 rounded-sm" style={{ background: skins[i].head, boxShadow: `0 0 8px ${skins[i].glow}` }} />
               <span className="text-white font-semibold text-sm hidden sm:inline">{names[i]}</span>
               <span className="text-red-300 text-sm tabular-nums">🍎 {state.players[i].apples}</span>
@@ -166,10 +184,16 @@ export const VersusView = ({
                   )}
                   <button
                     onClick={onStart}
-                    className="mt-1 px-8 py-3 rounded-xl text-lg font-bold text-white bg-gradient-to-r from-green-500 to-emerald-600 shadow-lg hover:scale-105 active:scale-95 transition-transform"
+                    disabled={!!rematch && winner !== null && rematch.me}
+                    className="mt-1 px-8 py-3 rounded-xl text-lg font-bold text-white bg-gradient-to-r from-green-500 to-emerald-600 shadow-lg hover:scale-105 active:scale-95 transition-transform disabled:opacity-50 disabled:hover:scale-100"
                   >
-                    {phase === 'ready' ? t('startRound') : winner !== null ? t('newMatch') : t('nextRound')}
+                    {phase === 'ready' ? t('startRound') : winner !== null ? (rematch ? t('rematch') : t('newMatch')) : t('nextRound')}
                   </button>
+                  {rematch && winner !== null && (rematch.me || rematch.them) && (
+                    <p className={`text-sm font-semibold ${rematch.them && !rematch.me ? 'text-amber-300 animate-pulse' : 'text-gray-300'}`} role="status">
+                      {rematch.me && !rematch.them ? t('waitingFriend') : rematch.them && !rematch.me ? t('friendWantsRematch') : ''}
+                    </p>
+                  )}
                   <p className="text-gray-500 text-xs">{t('pressEnterOrSpace')}</p>
                   {myIndex === null && <p className="text-gray-500 text-xs md:hidden">{t('keyboardNeeded')}</p>}
                 </>
@@ -178,6 +202,21 @@ export const VersusView = ({
           )}
         </Board>
       </div>
+
+      {reactions && !peerGone && (
+        <div className="shrink-0 flex gap-1.5" role="group" aria-label={t('reactions')}>
+          {REACTIONS.map((emoji, i) => (
+            <button
+              key={emoji}
+              onClick={() => reactions.send(emoji)}
+              title={`${emoji} (${i + 1})`}
+              className="w-11 h-11 rounded-xl bg-gray-800/80 border border-gray-700 hover:bg-gray-700 active:scale-90 transition-transform text-xl font-black text-white"
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      )}
 
       {onTurn && (
         <div className="md:hidden shrink-0 grid grid-cols-3 gap-1.5 pb-2">
