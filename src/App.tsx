@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useSnakeGame, Direction, Difficulty } from './hooks/useSnakeGame';
+import { translations, Language } from './i18n';
 
 type BoardSize = 'small' | 'medium' | 'large';
 
@@ -37,8 +38,14 @@ function App() {
   const [boardSize, setBoardSize] = useState<BoardSize>('medium');
   const [showSettings, setShowSettings] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [language, setLanguage] = useState<Language>(() => {
+    const saved = localStorage.getItem('snake-language');
+    return (saved as Language) || 'fr';
+  });
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const t = (key: keyof typeof translations.fr) => translations[language][key];
 
   // Keyboard controls
   useEffect(() => {
@@ -144,6 +151,12 @@ function App() {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
+  // Handle language change
+  const handleLanguageChange = (lang: Language) => {
+    setLanguage(lang);
+    localStorage.setItem('snake-language', lang);
+  };
+
   // Board size classes
   const boardSizeClasses: Record<BoardSize, string> = {
     small: 'w-full max-w-[80vw] sm:max-w-md',
@@ -166,7 +179,7 @@ function App() {
           <button
             onClick={() => setShowSettings(true)}
             className="p-2 bg-gray-700/60 hover:bg-gray-600 rounded-xl transition-colors border border-gray-600/50"
-            title="Paramètres"
+            title={t('settings')}
           >
             <span className="text-xl">⚙️</span>
           </button>
@@ -175,29 +188,29 @@ function App() {
         {/* Score Board */}
         <div className={`flex justify-between items-center bg-gray-800/60 backdrop-blur-sm rounded-2xl border border-gray-700/50 shadow-lg ${boardSize === 'large' ? 'px-6 py-4' : 'px-2 sm:px-4 py-2 sm:py-3'}`}>
           <div className="text-center flex-1">
-            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-xs sm:text-sm' : 'text-[9px] sm:text-xs'}`}>Score</p>
+            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-xs sm:text-sm' : 'text-[9px] sm:text-xs'}`}>{t('score')}</p>
             <p className={`font-bold text-white tabular-nums ${boardSize === 'large' ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-2xl'}`}>{score}</p>
           </div>
           <div className={`bg-gray-700 ${boardSize === 'large' ? 'w-px h-10' : 'w-px h-8'}`} />
           <div className="text-center flex-1">
-            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-xs sm:text-sm' : 'text-[10px] md:text-xs'}`}>🏆 Record</p>
+            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-xs sm:text-sm' : 'text-[10px] md:text-xs'}`}>{t('record')}</p>
             <p className={`font-bold text-yellow-400 tabular-nums ${boardSize === 'large' ? 'text-2xl sm:text-3xl' : 'text-xl md:text-2xl'}`}>{highScore}</p>
           </div>
           <div className={`bg-gray-700 ${boardSize === 'large' ? 'w-px h-10' : 'w-px h-8'}`} />
           <div className="text-center flex-1">
-            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-xs sm:text-sm' : 'text-[10px] md:text-xs'}`}>Bonus</p>
+            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-xs sm:text-sm' : 'text-[10px] md:text-xs'}`}>{t('bonus')}</p>
             <p className={`font-bold tabular-nums ${multiplier > 1 ? 'text-orange-400' : 'text-gray-500'} ${boardSize === 'large' ? 'text-2xl sm:text-3xl' : 'text-lg md:text-xl'}`}>
               x{multiplier}
             </p>
           </div>
           <div className={`bg-gray-700 ${boardSize === 'large' ? 'w-px h-10' : 'w-px h-8'}`} />
           <div className="text-center flex-1">
-            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-xs sm:text-sm' : 'text-[10px] md:text-xs'}`}>Pommes</p>
+            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-xs sm:text-sm' : 'text-[10px] md:text-xs'}`}>{t('apples')}</p>
             <p className={`font-bold text-red-400 tabular-nums ${boardSize === 'large' ? 'text-2xl sm:text-3xl' : 'text-lg md:text-xl'}`}>{applesEaten}</p>
           </div>
           <div className={`bg-gray-700 ${boardSize === 'large' ? 'w-px h-10' : 'w-px h-8'}`} />
           <div className="text-center flex-1">
-            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-xs sm:text-sm' : 'text-[10px] md:text-xs'}`}>Vies</p>
+            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-xs sm:text-sm' : 'text-[10px] md:text-xs'}`}>{t('lives')}</p>
             <p className={`font-bold ${boardSize === 'large' ? 'text-2xl sm:text-3xl' : 'text-lg md:text-xl'}`}>
               {Array.from({ length: lives }).map((_, i) => (
                 <span key={i} className="text-red-500">❤️</span>
@@ -211,7 +224,7 @@ function App() {
         {bonusLivesGiven < 3 && (
           <div className="mt-1 px-2">
             <p className="text-[10px] text-gray-500 text-center">
-              💚 Vie bonus à {30 - (applesEaten % 30)} pommes • {3 - bonusLivesGiven} restante{3 - bonusLivesGiven > 1 ? 's' : ''}
+              {t('livesBonus')} {30 - (applesEaten % 30)} {t('applesWord')} • {3 - bonusLivesGiven} {3 - bonusLivesGiven > 1 ? t('remainingPlural') : t('remaining')}
             </p>
           </div>
         )}
@@ -269,7 +282,7 @@ function App() {
           >
             <div className="bg-gradient-to-r from-orange-500/90 to-yellow-500/90 backdrop-blur-sm px-4 py-2 rounded-xl shadow-2xl shadow-orange-500/50 border border-yellow-300/50 animate-bonus-pop">
               <div className="text-center">
-                <p className="text-white font-bold text-sm md:text-base">🎉 BONUS!</p>
+                <p className="text-white font-bold text-sm md:text-base">{t('bonusNotification')}</p>
                 <p className="text-yellow-100 text-xs md:text-sm font-semibold">
                   x{bonusEvent.multiplier} • {bonusEvent.applesCount} 🍎
                 </p>
@@ -286,9 +299,9 @@ function App() {
           >
             <div className="bg-gradient-to-r from-red-600/90 to-rose-600/90 backdrop-blur-sm px-4 py-2 rounded-xl shadow-2xl shadow-red-500/50 border border-red-300/50 animate-life-lost-pop">
               <div className="text-center">
-                <p className="text-white font-bold text-sm md:text-base">💔 Vie perdue!</p>
+                <p className="text-white font-bold text-sm md:text-base">{t('lifeLost')}</p>
                 <p className="text-red-100 text-xs md:text-sm font-semibold">
-                  {lifeLostEvent.livesRemaining} restante{lifeLostEvent.livesRemaining > 1 ? 's' : ''}
+                  {lifeLostEvent.livesRemaining} {t('remaining2')}
                 </p>
               </div>
             </div>
@@ -303,9 +316,9 @@ function App() {
           >
             <div className="bg-gradient-to-r from-green-500/90 to-emerald-500/90 backdrop-blur-sm px-4 py-2 rounded-xl shadow-2xl shadow-green-500/50 border border-green-300/50 animate-life-gained-pop">
               <div className="text-center">
-                <p className="text-white font-bold text-sm md:text-base">💚 +1 Vie!</p>
+                <p className="text-white font-bold text-sm md:text-base">{t('lifeGained')}</p>
                 <p className="text-green-100 text-xs md:text-sm font-semibold">
-                  {lifeGainedEvent.lives} totale{lifeGainedEvent.lives > 1 ? 's' : ''}
+                  {lifeGainedEvent.lives} {lifeGainedEvent.lives > 1 ? t('totalPlural') : t('total')}
                 </p>
               </div>
             </div>
@@ -320,9 +333,9 @@ function App() {
           >
             <div className="bg-gradient-to-r from-purple-600/90 to-pink-600/90 backdrop-blur-sm px-4 py-2 rounded-xl shadow-2xl shadow-purple-500/50 border border-purple-300/50 animate-level-complete-pop">
               <div className="text-center">
-                <p className="text-white font-bold text-sm md:text-base">🎊 Niveau {levelCompleteEvent.level}!</p>
+                <p className="text-white font-bold text-sm md:text-base">{t('levelComplete')} {levelCompleteEvent.level} {t('levelCompleteEnd')}</p>
                 <p className="text-purple-100 text-xs md:text-sm font-semibold">
-                  Niveau {levelCompleteEvent.level + 1}...
+                  {t('nextLevel')} {levelCompleteEvent.level + 1}{t('nextLevelEnd')}
                 </p>
               </div>
             </div>
@@ -394,22 +407,22 @@ function App() {
         {gameState === 'idle' && (
           <div className={`absolute inset-0 bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center z-30 ${boardSize === 'large' ? '' : 'rounded-2xl'}`}>
             <div className={`${boardSize === 'large' ? 'text-7xl md:text-8xl mb-6' : 'text-5xl md:text-6xl mb-4'} animate-bounce`}>🐍</div>
-            <h2 className={`${boardSize === 'large' ? 'text-3xl md:text-4xl mb-3' : 'text-xl md:text-2xl mb-2'} font-bold text-white`}>Jeu du Serpent</h2>
+            <h2 className={`${boardSize === 'large' ? 'text-3xl md:text-4xl mb-3' : 'text-xl md:text-2xl mb-2'} font-bold text-white`}>{t('snakeGame')}</h2>
             <p className={`text-gray-300 text-center px-6 max-w-xs ${boardSize === 'large' ? 'text-sm md:text-base mb-3' : 'text-xs md:text-sm mb-2'}`}>
               {gameMode === 'classic' 
-                ? 'Dirigez le serpent pour manger les pommes. Ne touchez pas les murs ni vous-même!'
-                : 'Traversez les niveaux avec des obstacles. Mangez assez de pommes pour avancer!'}
+                ? t('classicDescription')
+                : t('levelsDescription')}
             </p>
             <p className={`text-gray-400 mb-6 ${boardSize === 'large' ? 'text-xs md:text-sm' : 'text-[10px]'}`}>
-              Mode: {gameMode === 'classic' ? '🎮 Classique' : '🏆 Niveaux'}
+              {t('mode')}: {gameMode === 'classic' ? t('classic') : t('levels')}
             </p>
             <button
               onClick={startGame}
               className={`bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-green-500/25 hover:shadow-green-500/40 hover:scale-105 active:scale-95 transition-all duration-200 ${boardSize === 'large' ? 'px-12 py-4 text-xl md:text-2xl' : 'px-8 py-3 text-lg'}`}
             >
-              ▶ Jouer
+              {t('play')}
             </button>
-            <p className={`text-gray-500 mt-4 ${boardSize === 'large' ? 'text-xs md:text-sm' : 'text-[10px]'}`}>Appuyez sur Entrée ou Espace</p>
+            <p className={`text-gray-500 mt-4 ${boardSize === 'large' ? 'text-xs md:text-sm' : 'text-[10px]'}`}>{t('pressEnterOrSpace')}</p>
           </div>
         )}
 
@@ -417,13 +430,13 @@ function App() {
         {gameState === 'paused' && (
           <div className={`absolute inset-0 bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center z-30 ${boardSize === 'large' ? '' : 'rounded-2xl'}`}>
             <div className={`${boardSize === 'large' ? 'text-6xl md:text-7xl mb-6' : 'text-4xl md:text-5xl mb-4'}`}>⏸️</div>
-            <h2 className={`${boardSize === 'large' ? 'text-3xl md:text-4xl mb-3' : 'text-xl md:text-2xl mb-2'} font-bold text-white`}>Pause</h2>
-            <p className={`text-gray-400 mb-6 ${boardSize === 'large' ? 'text-lg md:text-xl' : 'text-sm'}`}>Score actuel: {score}</p>
+            <h2 className={`${boardSize === 'large' ? 'text-3xl md:text-4xl mb-3' : 'text-xl md:text-2xl mb-2'} font-bold text-white`}>{t('paused')}</h2>
+            <p className={`text-gray-400 mb-6 ${boardSize === 'large' ? 'text-lg md:text-xl' : 'text-sm'}`}>{t('currentScore')} {score}</p>
             <button
               onClick={togglePause}
               className={`bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-105 active:scale-95 transition-all duration-200 ${boardSize === 'large' ? 'px-12 py-4 text-xl md:text-2xl' : 'px-8 py-3'}`}
             >
-              ▶ Reprendre
+              {t('resume')}
             </button>
           </div>
         )}
@@ -432,25 +445,25 @@ function App() {
         {gameState === 'gameover' && (
           <div className={`absolute inset-0 bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center z-30 ${boardSize === 'large' ? '' : 'rounded-2xl'}`}>
             <div className={`${boardSize === 'large' ? 'text-6xl md:text-7xl mb-4' : 'text-4xl md:text-5xl mb-3'}`}>💀</div>
-            <h2 className={`${boardSize === 'large' ? 'text-3xl md:text-4xl mb-4' : 'text-xl md:text-2xl mb-3'} font-bold text-red-400`}>Game Over!</h2>
+            <h2 className={`${boardSize === 'large' ? 'text-3xl md:text-4xl mb-4' : 'text-xl md:text-2xl mb-3'} font-bold text-red-400`}>{t('gameOver')}</h2>
             <div className={`bg-gray-800/80 rounded-xl border border-gray-700 space-y-2 mb-4 ${boardSize === 'large' ? 'px-8 py-5' : 'px-6 py-3'}`}>
               <p className="text-white text-center">
-                Score: <span className={`font-bold text-green-400 ${boardSize === 'large' ? 'text-3xl md:text-4xl' : 'text-xl'}`}>{score}</span>
+                {t('score')}: <span className={`font-bold text-green-400 ${boardSize === 'large' ? 'text-3xl md:text-4xl' : 'text-xl'}`}>{score}</span>
               </p>
               <p className={`text-gray-300 text-center ${boardSize === 'large' ? 'text-base md:text-lg' : 'text-sm'}`}>
-                🍎 {applesEaten} pommes mangées
+                🍎 {applesEaten} {t('applesEaten')}
               </p>
               {gameMode === 'levels' && (
                 <p className={`text-purple-300 text-center ${boardSize === 'large' ? 'text-base md:text-lg' : 'text-sm'}`}>
-                  🏆 Niveau atteint: <span className="font-bold">{level}</span>
+                  {t('levelReached')} <span className="font-bold">{level}</span>
                 </p>
               )}
               <p className={`text-gray-300 text-center ${boardSize === 'large' ? 'text-base md:text-lg' : 'text-sm'}`}>
-                ❤️ {bonusLivesGiven}/3 vies bonus utilisées
+                ❤️ {bonusLivesGiven}/3 {t('bonusLivesUsed')}
               </p>
               {score >= highScore && score > 0 && (
                 <p className={`text-yellow-400 text-center mt-2 animate-pulse font-semibold ${boardSize === 'large' ? 'text-base md:text-lg' : 'text-sm'}`}>
-                  🏆 Nouveau record!
+                  {t('newRecord')}
                 </p>
               )}
             </div>
@@ -458,7 +471,7 @@ function App() {
               onClick={startGame}
               className={`bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-green-500/25 hover:shadow-green-500/40 hover:scale-105 active:scale-95 transition-all duration-200 ${boardSize === 'large' ? 'px-12 py-4 text-xl md:text-2xl' : 'px-8 py-3'}`}
             >
-              🔄 Rejouer
+              {t('playAgain')}
             </button>
           </div>
         )}
@@ -473,7 +486,7 @@ function App() {
               onClick={togglePause}
               className={`bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg ${boardSize === 'large' ? 'px-8 py-3 text-base md:text-lg' : 'px-5 py-2.5 text-sm md:text-base'}`}
             >
-              ⏸ Pause
+              {t('pause')}
             </button>
           )}
           {(gameState === 'playing' || gameState === 'paused') && (
@@ -481,7 +494,7 @@ function App() {
               onClick={startGame}
               className={`bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 text-white font-semibold rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg ${boardSize === 'large' ? 'px-8 py-3 text-base md:text-lg' : 'px-5 py-2.5 text-sm md:text-base'}`}
             >
-              🔄 Restart
+              {t('restart')}
             </button>
           )}
         </div>
@@ -490,8 +503,8 @@ function App() {
         {gameMode === 'levels' && (
           <div className="bg-gray-800/60 backdrop-blur-sm rounded-xl px-4 py-2 border border-purple-700/50">
             <div className="flex justify-between items-center mb-1">
-              <span className="text-xs text-purple-300 font-semibold">Niveau {level}</span>
-              <span className="text-xs text-gray-400">{levelApples}/{5 + level * 2} pommes</span>
+              <span className="text-xs text-purple-300 font-semibold">{t('level')} {level}</span>
+              <span className="text-xs text-gray-400">{levelApples}/{5 + level * 2} {t('applesProgress')}</span>
             </div>
             <div className="w-full h-2 bg-gray-700/50 rounded-full overflow-hidden">
               <div 
@@ -535,13 +548,13 @@ function App() {
               ▼
             </button>
           </div>
-          <p className="text-center text-gray-500 text-[10px] mt-2">Glissez ou utilisez les boutons</p>
+          <p className="text-center text-gray-500 text-[10px] mt-2">{t('swipeOrButtons')}</p>
         </div>
 
         {/* Desktop Instructions */}
         <div className="hidden md:block text-center text-gray-500 text-xs mt-2 space-y-1">
-          <p>🎮 <span className="text-gray-400">Flèches</span> ou <span className="text-gray-400">WASD</span> pour diriger le serpent</p>
-          <p>⏸ <span className="text-gray-400">Espace</span> pour pause • <span className="text-gray-400">Entrée</span> pour démarrer</p>
+          <p>{t('arrowsOrWasd')}</p>
+          <p>{t('spacePause')}</p>
         </div>
       </div>
       </div>
@@ -551,7 +564,7 @@ function App() {
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-gray-800 rounded-2xl border border-gray-700 shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b border-gray-700">
-              <h2 className="text-xl font-bold text-white">⚙️ Paramètres</h2>
+              <h2 className="text-xl font-bold text-white">⚙️ {t('settings')}</h2>
               <button
                 onClick={() => setShowSettings(false)}
                 className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
@@ -561,14 +574,41 @@ function App() {
             </div>
             
             <div className="p-4 space-y-5">
+              {/* Language */}
+              <div>
+                <label className="text-sm font-semibold text-gray-300 mb-2 block">🌐 Language / Langue</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => handleLanguageChange('fr')}
+                    className={`py-2.5 px-3 rounded-xl text-sm font-bold transition-all ${
+                      language === 'fr'
+                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg scale-105'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                  >
+                    🇫🇷 Français
+                  </button>
+                  <button
+                    onClick={() => handleLanguageChange('en')}
+                    className={`py-2.5 px-3 rounded-xl text-sm font-bold transition-all ${
+                      language === 'en'
+                        ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg scale-105'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                  >
+                    🇬🇧 English
+                  </button>
+                </div>
+              </div>
+
               {/* Board Size */}
               <div>
-                <label className="text-sm font-semibold text-gray-300 mb-2 block">📐 Taille du plateau</label>
+                <label className="text-sm font-semibold text-gray-300 mb-2 block">{t('boardSize')}</label>
                 <div className="grid grid-cols-3 gap-2">
                   {([
-                    { key: 'small' as BoardSize, label: 'Petit', emoji: '🔹' },
-                    { key: 'medium' as BoardSize, label: 'Moyen', emoji: '🔷' },
-                    { key: 'large' as BoardSize, label: 'Grand', emoji: '🟦' },
+                    { key: 'small' as BoardSize, label: t('small'), emoji: '' },
+                    { key: 'medium' as BoardSize, label: t('mediumSize'), emoji: '' },
+                    { key: 'large' as BoardSize, label: t('large'), emoji: '' },
                   ]).map(size => (
                     <button
                       key={size.key}
@@ -579,7 +619,7 @@ function App() {
                           : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                       }`}
                     >
-                      {size.emoji} {size.label}
+                      {size.label}
                     </button>
                   ))}
                 </div>
@@ -587,7 +627,7 @@ function App() {
 
               {/* Fullscreen */}
               <div>
-                <label className="text-sm font-semibold text-gray-300 mb-2 block">🖥️ Affichage</label>
+                <label className="text-sm font-semibold text-gray-300 mb-2 block">{t('display')}</label>
                 <button
                   onClick={toggleFullscreen}
                   className={`w-full py-2.5 px-4 rounded-xl text-sm font-bold transition-all ${
@@ -596,13 +636,13 @@ function App() {
                       : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                   }`}
                 >
-                  {isFullscreen ? '🔲 Quitter le plein écran' : '⬜ Plein écran'}
+                  {isFullscreen ? t('exitFullscreen') : t('fullscreen')}
                 </button>
               </div>
 
               {/* Game Mode */}
               <div>
-                <label className="text-sm font-semibold text-gray-300 mb-2 block">🎮 Mode de jeu</label>
+                <label className="text-sm font-semibold text-gray-300 mb-2 block">{t('gameMode')}</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => changeGameMode('classic')}
@@ -613,7 +653,7 @@ function App() {
                         : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                     } ${(gameState === 'playing' || gameState === 'paused') ? 'opacity-40 cursor-not-allowed' : ''}`}
                   >
-                    🎮 Classique
+                    {t('classic')}
                   </button>
                   <button
                     onClick={() => changeGameMode('levels')}
@@ -624,19 +664,19 @@ function App() {
                         : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                     } ${(gameState === 'playing' || gameState === 'paused') ? 'opacity-40 cursor-not-allowed' : ''}`}
                   >
-                    🏆 Niveaux
+                    {t('levels')}
                   </button>
                 </div>
               </div>
 
               {/* Difficulty */}
               <div>
-                <label className="text-sm font-semibold text-gray-300 mb-2 block">⚡ Difficulté</label>
+                <label className="text-sm font-semibold text-gray-300 mb-2 block">{t('difficulty')}</label>
                 <div className="grid grid-cols-3 gap-2">
                   {([
-                    { key: 'easy' as Difficulty, label: 'Facile', emoji: '🐢', color: 'from-green-500 to-green-600' },
-                    { key: 'medium' as Difficulty, label: 'Moyen', emoji: '🐇', color: 'from-yellow-500 to-orange-500' },
-                    { key: 'hard' as Difficulty, label: 'Difficile', emoji: '⚡', color: 'from-red-500 to-red-600' },
+                    { key: 'easy' as Difficulty, label: t('easy'), color: 'from-green-500 to-green-600' },
+                    { key: 'medium' as Difficulty, label: t('medium'), color: 'from-yellow-500 to-orange-500' },
+                    { key: 'hard' as Difficulty, label: t('hard'), color: 'from-red-500 to-red-600' },
                   ]).map(d => (
                     <button
                       key={d.key}
@@ -648,7 +688,7 @@ function App() {
                           : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                       } ${(gameState === 'playing' || gameState === 'paused') ? 'opacity-40 cursor-not-allowed' : ''}`}
                     >
-                      {d.emoji} {d.label}
+                      {d.label}
                     </button>
                   ))}
                 </div>
@@ -656,7 +696,7 @@ function App() {
 
               {/* Wrap Around */}
               <div>
-                <label className="text-sm font-semibold text-gray-300 mb-2 block">🌀 Traversée des murs</label>
+                <label className="text-sm font-semibold text-gray-300 mb-2 block">{t('wrapAround')}</label>
                 <button
                   onClick={toggleWrapAround}
                   disabled={gameState === 'playing' || gameState === 'paused' || gameMode === 'levels'}
@@ -666,8 +706,8 @@ function App() {
                       : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                   } ${(gameState === 'playing' || gameState === 'paused' || gameMode === 'levels') ? 'opacity-40 cursor-not-allowed' : ''}`}
                 >
-                  {wrapAround ? '🌀 Activé' : '🧱 Désactivé'}
-                  {gameMode === 'levels' && ' (désactivé en mode niveaux)'}
+                  {wrapAround ? t('wrapAroundOn') : t('wrapAroundOff')}
+                  {gameMode === 'levels' && t('disabledInLevels')}
                 </button>
               </div>
             </div>
