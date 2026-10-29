@@ -45,6 +45,7 @@ const MODE_DESCRIPTIONS: Record<GameMode, keyof Translations> = {
   zen: 'zenDescription',
   golden: 'goldenDescription',
   custom: 'customDescription',
+  daily: 'dailyDescription',
 };
 
 const isTyping = (e: KeyboardEvent) =>
@@ -198,7 +199,8 @@ function App() {
   };
 
   // Leaderboard entry at game over.
-  const lbKey = boardKey(gameMode, difficulty);
+  const scoreDifficulty = gameMode === 'daily' ? 'medium' : difficulty; // daily: same rules for everyone
+  const lbKey = boardKey(gameMode, scoreDifficulty);
   const savedThisGame = saved?.gameId === gameId ? saved : null;
   const qualifiesHere = qualifies(leaderboard.boards[lbKey] ?? [], score);
   // Any score can go to the world board; only top-10 scores are kept on this device.
@@ -209,7 +211,7 @@ function App() {
     const id = gameId;
     setSaved({ gameId: id, rank, world: onlineEnabled ? 'sending' : null });
     if (onlineEnabled) {
-      submitWorldScore({ ...entry, mode: gameMode, difficulty, golden: game.goldenEaten, durationMs: performance.now() - gameStartedAt.current })
+      submitWorldScore({ ...entry, mode: gameMode, difficulty: scoreDifficulty, golden: game.goldenEaten, durationMs: performance.now() - gameStartedAt.current })
         .then(improved => setSaved(s => (s?.gameId === id ? { ...s, world: improved ? 'sent' : 'kept' } : s)))
         .catch(() => setSaved(s => (s?.gameId === id ? { ...s, world: 'error' } : s)));
     }

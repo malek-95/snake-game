@@ -35,10 +35,13 @@ import {
   generateLevelConfig,
   findSafeSpawnPosition,
   initialSnake,
+  dailyChallenge,
+  seededRandom,
+  todayKey,
 } from '../utils/game.utils';
 
 // Levels and custom levels use hand-placed walls, so they keep the 20x20 grid.
-const usesFixedGrid = (mode: GameMode) => mode === 'levels' || mode === 'custom';
+const usesFixedGrid = (mode: GameMode) => mode === 'levels' || mode === 'custom' || mode === 'daily';
 const hasWalls = usesFixedGrid;
 
 export const useSnakeGame = (): UseSnakeGameReturn => {
@@ -67,6 +70,9 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [wrapAround, setWrapAround] = useState(false);
   const [gameMode, setGameMode] = useState<GameMode>('classic');
+  // The daily challenge is the same for everyone: medium speed and points, seeded apples.
+  const playDifficulty: Difficulty = gameMode === 'daily' ? 'medium' : difficulty;
+  const rngRef = useRef<() => number>(Math.random);
   
   // Progress tracking
   const [applesEaten, setApplesEaten] = useState(0);
@@ -224,7 +230,7 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
       directionQueueRef.current = [];
       setDirection('RIGHT');
       
-      const newFood = getRandomPosition(snakeRef.current, obstacles, gridRef.current);
+      const newFood = getRandomPosition(snakeRef.current, obstacles, gridRef.current, rngRef.current);
       setFood(newFood);
       foodRef.current = newFood;
       
@@ -318,7 +324,7 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
     
     if (willEatGolden) {
       newSnake = [newHead, ...currentSnake];
-      addScore(SCORE_CONFIG[difficulty] * multiplierRef.current * GOLDEN_CONFIG.pointsMultiplier);
+      addScore(SCORE_CONFIG[playDifficulty] * multiplierRef.current * GOLDEN_CONFIG.pointsMultiplier);
       goldenEatenRef.current += 1;
       setGoldenEaten(goldenEatenRef.current);
       goldenFoodRef.current = null;
@@ -360,7 +366,7 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
       }
       
       // Score before the level check: the level-completing apple counts too.
-      addScore(SCORE_CONFIG[difficulty] * currentMultiplier);
+      addScore(SCORE_CONFIG[playDifficulty] * currentMultiplier);
 
       if (mode === 'levels') {
         const newLevelApples = levelApplesRef.current + 1;
@@ -394,7 +400,7 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
           directionQueueRef.current = [];
           setDirection('RIGHT');
           
-          const newFood = getRandomPosition(resetSnake, nextLevelConfig.obstacles, gridRef.current);
+          const newFood = getRandomPosition(resetSnake, nextLevelConfig.obstacles, gridRef.current, rngRef.current);
           setFood(newFood);
           foodRef.current = newFood;
           
@@ -403,7 +409,7 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
       }
       
       const blocked = goldenFoodRef.current ? [...obstaclesRef.current, goldenFoodRef.current] : obstaclesRef.current;
-      const newFood = getRandomPosition(newSnake, blocked, gridRef.current);
+      const newFood = getRandomPosition(newSnake, blocked, gridRef.current, rngRef.current);
       setFood(newFood);
       foodRef.current = newFood;
 
@@ -419,14 +425,14 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
 
     setSnake(newSnake);
     snakeRef.current = newSnake;
-  }, [difficulty, handleDeath]);
+  }, [playDifficulty, handleDeath]);
 
   // Survival speeds up with every apple; only then does the apple count restart the loop.
   const survivalApples = gameMode === 'survival' ? applesEaten : 0;
 
   const startGameLoop = useCallback(() => {
     clearGameLoop();
-    const baseSpeed = SPEED_CONFIG[difficulty];
+    const baseSpeed = SPEED_CONFIG[playDifficulty];
     const speedMultiplier =
       gameMode === 'levels' ? generateLevelConfig(level).speedMultiplier
       : gameMode === 'survival' ? 1 + survivalApples * SURVIVAL_SPEEDUP_PER_APPLE
@@ -434,7 +440,7 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
     const actualSpeed = Math.max(MIN_TICK_MS, baseSpeed / speedMultiplier);
     setTickMs(actualSpeed);
     gameLoopRef.current = window.setInterval(moveSnake, actualSpeed);
-  }, [clearGameLoop, moveSnake, difficulty, gameMode, level, survivalApples]); // level/apples in deps: the loop restarts faster
+  }, [clearGameLoop, moveSnake, playDifficulty, gameMode, level, survivalApples]); // level/apples in deps: the loop restarts faster
 
   // Time attack clock (stops while paused).
   useEffect(() => {
@@ -450,10 +456,12 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
   const obstaclesFor = (mode: GameMode): Position[] =>
     mode === 'levels' ? generateLevelConfig(1).obstacles
     : mode === 'custom' ? customObstaclesRef.current
+    : mode === 'daily' ? dailyChallenge(todayKey()).obstacles
     : [];
 
   const startGame = useCallback(() => {
     const startGrid = usesFixedGrid(gameModeRef.current) ? DEFAULT_GRID : preferredGridRef.current;
+    rngRef.current = gameModeRef.current === 'daily' ? seededRandom(dailyChallenge(todayKey()).seed) : Math.random;
     gridRef.current = startGrid;
     setGrid(startGrid);
     const startSnake = initialSnake(startGrid);
@@ -468,7 +476,7 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
     levelApplesRef.current = 0;
     setLevelCompleteEvent(null);
     
-    const initialFood = getRandomPosition(startSnake, initialObstacles, startGrid);
+    const initialFood = getRandomPosition(startSnake, initialObstacles, startGrid, rngRef.current);
     
     setSnake(startSnake);
     snakeRef.current = startSnake;

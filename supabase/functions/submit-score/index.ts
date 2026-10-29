@@ -53,10 +53,13 @@ Deno.serve(async req => {
   if (logError) return reply({ error: 'server' }, 500);
 
   const { row } = check;
-  const { data: improved, error } = await admin.rpc('submit_best_score', {
-    p_name: row.name, p_mode: row.mode, p_difficulty: row.difficulty,
-    p_score: row.score, p_apples: row.apples, p_level: row.level,
-  });
+  // Daily challenge scores go to today's board (the day is set by the database, not the browser).
+  const { data: improved, error } = row.mode === 'daily'
+    ? await admin.rpc('submit_daily_score', { p_name: row.name, p_score: row.score, p_apples: row.apples })
+    : await admin.rpc('submit_best_score', {
+      p_name: row.name, p_mode: row.mode, p_difficulty: row.difficulty,
+      p_score: row.score, p_apples: row.apples, p_level: row.level,
+    });
   if (error) return reply({ error: 'server' }, 500);
   return reply({ ok: true, improved: improved === true }, 201);
 });

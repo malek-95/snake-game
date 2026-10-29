@@ -26,6 +26,18 @@ export interface WorldScore {
 /** Top 10 for one mode and difficulty, best first (earlier wins ties). */
 export const fetchWorldTop = async (mode: GameMode, difficulty: Difficulty): Promise<WorldEntry[]> => {
   if (!supabase) return [];
+  if (mode === 'daily') {
+    // Today's daily challenge board (UTC day, like the challenge itself).
+    const { data, error } = await supabase
+      .from('daily_scores')
+      .select('name, score, apples, created_at')
+      .eq('day', new Date().toISOString().slice(0, 10))
+      .order('score', { ascending: false })
+      .order('created_at', { ascending: true })
+      .limit(10);
+    if (error) throw error;
+    return data.map(r => ({ ...r, level: null }));
+  }
   const { data, error } = await supabase
     .from('scores')
     .select('name, score, apples, level, created_at')

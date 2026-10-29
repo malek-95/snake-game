@@ -2,7 +2,7 @@
 export type Direction = 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type GameState = 'idle' | 'playing' | 'paused' | 'gameover';
-export type GameMode = 'classic' | 'levels' | 'timeAttack' | 'survival' | 'zen' | 'golden' | 'custom';
+export type GameMode = 'classic' | 'levels' | 'timeAttack' | 'survival' | 'zen' | 'golden' | 'custom' | 'daily';
 export type BoardSize = 'small' | 'medium' | 'large';
 export type Language = 'fr' | 'en';
 

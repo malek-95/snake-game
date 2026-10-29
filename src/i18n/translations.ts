@@ -186,6 +186,8 @@ export interface Translations {
   rematch: string;
   friendWantsRematch: string;
   reactions: string;
+  daily: string;
+  dailyDescription: string;
 
   // Language selector
   language: string;
@@ -353,6 +355,8 @@ export const translations: Record<Language, Translations> = {
     rematch: 'Revanche',
     friendWantsRematch: 'Ton ami veut une revanche !',
     reactions: 'Réactions',
+    daily: '📅 Défi du jour',
+    dailyDescription: 'Le même niveau pour tout le monde aujourd’hui. Fais le meilleur score du jour !',
     language: '🌐 Language / Langue',
     french: '🇫🇷 Français',
     english: '🇬🇧 English',
@@ -516,6 +520,8 @@ export const translations: Record<Language, Translations> = {
     rematch: 'Rematch',
     friendWantsRematch: 'Your friend wants a rematch!',
     reactions: 'Reactions',
+    daily: '📅 Daily challenge',
+    dailyDescription: 'The same level for everyone today. Set the best score of the day!',
     language: '🌐 Language / Langue',
     french: '🇫🇷 Français',
     english: '🇬🇧 English',

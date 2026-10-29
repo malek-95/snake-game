@@ -58,6 +58,16 @@ backend('world leaderboard (live backend)', () => {
     expect(data).toEqual([{ score: 400 }]);
   });
 
+  it('keeps one daily challenge score per player per day', async () => {
+    const name = `day${Date.now() % 100000}`;
+    const send = (score: number, apples: number) =>
+      submitWorldScore({ name, mode: 'daily', difficulty: 'medium', score, apples, golden: 0, durationMs: 60_000 });
+    expect(await send(100, 10)).toBe(true);
+    expect(await send(90, 9)).toBe(false);
+    const today = await fetchWorldTop('daily', 'medium');
+    expect(today.filter(r => r.name === name).map(r => r.score)).toEqual([100]);
+  });
+
   it('refuses scores written straight into the database', async () => {
     const { error } = await supabase!.from('scores').insert({ name: 'cheat', mode: 'classic', difficulty: 'easy', score: 5, apples: 1 });
     expect(error).toBeTruthy();

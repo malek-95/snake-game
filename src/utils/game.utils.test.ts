@@ -10,6 +10,9 @@ import {
   isOutOfBounds,
   gridForArea,
   initialSnake,
+  dailyChallenge,
+  seededRandom,
+  todayKey,
 } from './game.utils';
 import { GRID_SIZE } from '../constants/game.constants';
 import type { Position } from '../types/game.types';
@@ -119,5 +122,35 @@ describe('rectangular grids (full-size board)', () => {
       seen.add(p.x);
     }
     expect(Math.max(...seen)).toBeGreaterThanOrEqual(20);
+  });
+});
+
+describe('daily challenge', () => {
+  it('is the same all day for everyone and changes the next day', () => {
+    expect(dailyChallenge('2026-10-29')).toEqual(dailyChallenge('2026-10-29'));
+    expect(dailyChallenge('2026-10-30').seed).not.toBe(dailyChallenge('2026-10-29').seed);
+    expect(dailyChallenge('2026-10-30').obstacles).not.toEqual(dailyChallenge('2026-10-29').obstacles);
+  });
+
+  it('keeps walls on the board and out of the start zone', () => {
+    const center = Math.floor(GRID_SIZE / 2);
+    for (const day of ['2026-01-01', '2026-06-15', '2026-10-29', '2027-02-28']) {
+      const { obstacles } = dailyChallenge(day);
+      expect(obstacles.length).toBeGreaterThan(5);
+      for (const o of obstacles) {
+        expect(isOutOfBounds(o)).toBe(false);
+        expect(isSafePosition(o.x, o.y, center)).toBe(true);
+      }
+    }
+  });
+
+  it('places apples the same way from the same seed', () => {
+    const a = seededRandom(42), b = seededRandom(42);
+    const snake = initialSnake();
+    expect(getRandomPosition(snake, [], undefined, a)).toEqual(getRandomPosition(snake, [], undefined, b));
+  });
+
+  it('uses the UTC date as the day', () => {
+    expect(todayKey(new Date('2026-10-29T23:30:00Z'))).toBe('2026-10-29');
   });
 });
