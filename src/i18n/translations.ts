@@ -190,6 +190,9 @@ export interface Translations {
   dailyDescription: string;
   powerUps: string;
   racing: string;
+  quickMatch: string;
+  searchingPlayer: string;
+  cancel: string;
 
   // Language selector
   language: string;
@@ -361,6 +364,9 @@ export const translations: Record<Language, Translations> = {
     dailyDescription: 'Le même niveau pour tout le monde aujourd’hui. Fais le meilleur score du jour !',
     powerUps: '⚡ Bonus spéciaux',
     racing: 'Course contre',
+    quickMatch: 'Partie rapide',
+    searchingPlayer: 'Recherche d’un joueur…',
+    cancel: 'Annuler',
     language: '🌐 Language / Langue',
     french: '🇫🇷 Français',
     english: '🇬🇧 English',
@@ -528,6 +534,9 @@ export const translations: Record<Language, Translations> = {
     dailyDescription: 'The same level for everyone today. Set the best score of the day!',
     powerUps: '⚡ Power-ups',
     racing: 'Racing',
+    quickMatch: 'Quick match',
+    searchingPlayer: 'Looking for a player…',
+    cancel: 'Cancel',
     language: '🌐 Language / Langue',
     french: '🇫🇷 Français',
     english: '🇬🇧 English',
