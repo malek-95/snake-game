@@ -76,9 +76,6 @@ const Eyes = ({ angle, dead }: { angle: number; dead?: boolean }) => (
 const sphere = (color: string) =>
   `radial-gradient(circle at 35% 30%, color-mix(in srgb, ${color} 45%, white), ${color} 55%, color-mix(in srgb, ${color} 60%, black))`;
 
-/** Body segments: a soft highlight but no dark rim, so overlapping segments merge into one tube. */
-const tube = (color: string) =>
-  `radial-gradient(circle at 40% 35%, color-mix(in srgb, ${color} 70%, white), ${color} 65%)`;
 
 /** Absolute position for cell p as % of the board, inset by `gap` px on each side. */
 export const cellStyle = (p: Position, grid: Grid, gap = 1): React.CSSProperties => ({
@@ -164,7 +161,14 @@ export const Board = ({
             const head = i === 0;
             const before = track.current[si]?.prev?.[i];
             const glide = !!tickMs && !!before && Math.abs(before.x - seg.x) + Math.abs(before.y - seg.y) === 1;
-            const size = head ? 1.35 : 1.28 - 0.3 * (len > 1 ? i / (len - 1) : 0); // overlap neighbours, taper to the tail
+            // Slim body that tapers to the tail; the head is a little wider.
+            const size = head ? 0.92 : 0.76 - 0.26 * (len > 1 ? i / (len - 1) : 0);
+            const color = head ? snake.skin.head : snake.skin.body(i, len);
+            // A short bar to the next segment keeps the body in one piece (skipped across a wrap-around).
+            const next = snake.body[i + 1];
+            const link = next && Math.abs(next.x - seg.x) + Math.abs(next.y - seg.y) === 1
+              ? Math.atan2(next.y - seg.y, next.x - seg.x)
+              : null;
             return (
               <div
                 key={i}
@@ -178,9 +182,23 @@ export const Board = ({
                   zIndex: len - i, // head on top, each segment over the one behind it
                 }}
               >
+                {link !== null && (
+                  <div
+                    className="absolute rounded-full"
+                    style={{
+                      left: '50%',
+                      top: `${50 - size * 50}%`,
+                      width: '100%',
+                      height: `${size * 100}%`,
+                      transformOrigin: '0 50%',
+                      transform: `rotate(${link}rad)`,
+                      background: snake.skin.body(i + 1, len),
+                    }}
+                  />
+                )}
                 <div
                   className={`absolute inset-0 rounded-full ${snake.blink ? 'animate-pulse' : ''}`}
-                  style={{ transform: `scale(${size})`, background: head ? sphere(snake.skin.head) : tube(snake.skin.body(i, len)) }}
+                  style={{ transform: `scale(${size})`, background: head ? sphere(color) : color }}
                 >
                   {head && <Eyes angle={angle} dead={snake.dead} />}
                 </div>

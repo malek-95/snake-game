@@ -47,6 +47,17 @@ backend('world leaderboard (live backend)', () => {
     await expect(submitWorldScore({ ...real, mode: 'nope' as never, score: 10, apples: 2 })).rejects.toBeTruthy();
   });
 
+  it('keeps one world score per player: their best', async () => {
+    const name = `best${Date.now() % 100000}`;
+    const send = (score: number, apples: number) =>
+      submitWorldScore({ name, mode: 'survival', difficulty: 'medium', score, apples, golden: 0, durationMs: 60_000 });
+    expect(await send(300, 30)).toBe(true);   // first score
+    expect(await send(250, 25)).toBe(false);  // lower: the best stays
+    expect(await send(400, 40)).toBe(true);   // better: replaces it
+    const { data } = await supabase!.from('scores').select('score').ilike('name', name);
+    expect(data).toEqual([{ score: 400 }]);
+  });
+
   it('refuses scores written straight into the database', async () => {
     const { error } = await supabase!.from('scores').insert({ name: 'cheat', mode: 'classic', difficulty: 'easy', score: 5, apples: 1 });
     expect(error).toBeTruthy();

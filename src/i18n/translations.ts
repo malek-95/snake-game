@@ -182,6 +182,7 @@ export interface Translations {
   youWinMatch: string;
   updateReady: string;
   updateNow: string;
+  worldBestKept: string;
 
   // Language selector
   language: string;
@@ -345,6 +346,7 @@ export const translations: Record<Language, Translations> = {
     youWinMatch: 'Tu remportes le match ! 🏆',
     updateReady: 'Nouvelle version disponible',
     updateNow: 'Mettre à jour',
+    worldBestKept: '🌍 Ton record mondial reste plus haut',
     language: '🌐 Language / Langue',
     french: '🇫🇷 Français',
     english: '🇬🇧 English',
@@ -504,6 +506,7 @@ export const translations: Record<Language, Translations> = {
     youWinMatch: 'You win the match! 🏆',
     updateReady: 'New version available',
     updateNow: 'Update',
+    worldBestKept: '🌍 Your world best is still higher',
     language: '🌐 Language / Langue',
     french: '🇫🇷 Français',
     english: '🇬🇧 English',

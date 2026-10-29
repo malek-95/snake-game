@@ -22,9 +22,22 @@ export const boardKey = (mode: GameMode, difficulty: Difficulty) => `${mode}:${d
 export const qualifies = (entries: ScoreEntry[], score: number) =>
   score > 0 && (entries.length < MAX_ENTRIES || score > entries[entries.length - 1].score);
 
-/** Adds an entry, keeping the list sorted (ties keep the older entry first) and capped. */
-export const insertScore = (entries: ScoreEntry[], entry: ScoreEntry): ScoreEntry[] =>
-  [...entries, entry].sort((a, b) => b.score - a.score).slice(0, MAX_ENTRIES);
+/** Players are told apart by name (no accounts), ignoring case and spaces around it. */
+export const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/**
+ * Adds a score, keeping one entry per player: their best. A lower score than their best changes
+ * nothing; a higher one replaces it. The list stays sorted (ties keep the older entry first) and capped.
+ */
+export const insertScore = (entries: ScoreEntry[], entry: ScoreEntry): ScoreEntry[] => {
+  const mine = entries.find(e => sameName(e.name, entry.name));
+  if (mine && mine.score >= entry.score) return entries;
+  return [...entries.filter(e => e !== mine), entry].sort((a, b) => b.score - a.score).slice(0, MAX_ENTRIES);
+};
+
+/** Boards saved by older versions can hold several entries per player: keep each player's best. */
+export const bestPerName = (entries: ScoreEntry[]): ScoreEntry[] =>
+  [...entries].sort((a, b) => b.score - a.score).filter((e, i, all) => all.findIndex(o => sameName(o.name, e.name)) === i);
 
 const isBoards = (v: unknown) =>
   !!v && typeof v === 'object' && !Array.isArray(v) &&
@@ -33,10 +46,11 @@ const isBoards = (v: unknown) =>
 export const cleanName = (name: string) => name.trim().slice(0, 16) || '???';
 
 export const useLeaderboard = () => {
-  const [boards, setBoards] = useState<Boards>(() => loadJSON(BOARDS_KEY, {}, isBoards));
+  const [boards, setBoards] = useState<Boards>(() =>
+    Object.fromEntries(Object.entries(loadJSON<Boards>(BOARDS_KEY, {}, isBoards)).map(([k, list]) => [k, bestPerName(list)])));
   const [playerName, setPlayerNameState] = useState(() => loadJSON(NAME_KEY, '', v => typeof v === 'string'));
 
-  /** Saves a score and returns its 1-based rank, or 0 if it didn't make the board. */
+  /** Saves a score; returns the 1-based rank of this player's best on the board (0 if not on it). */
   const addScore = useCallback((key: string, entry: ScoreEntry) => {
     const saved = { ...entry, name: cleanName(entry.name) };
     const list = insertScore(boards[key] ?? [], saved);
@@ -45,7 +59,7 @@ export const useLeaderboard = () => {
     saveJSON(BOARDS_KEY, all);
     setPlayerNameState(saved.name);
     saveJSON(NAME_KEY, saved.name);
-    return list.indexOf(saved) + 1;
+    return list.findIndex(e => sameName(e.name, saved.name)) + 1;
   }, [boards]);
 
   return { boards, playerName, addScore };

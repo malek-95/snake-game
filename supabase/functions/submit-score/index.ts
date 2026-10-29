@@ -1,5 +1,6 @@
 // Edge Function: the only way to add a world leaderboard score.
-// Checks the score is possible (validate.ts), limits how often one connection can post, then saves it.
+// Checks the score is possible (validate.ts), limits how often one connection can post, then keeps it
+// only if it beats the player's best (one score per player per mode and difficulty).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { validateScore } from './validate.ts';
 
@@ -51,7 +52,11 @@ Deno.serve(async req => {
   const { error: logError } = await admin.from('score_submissions').insert({ ip_hash: ipHash });
   if (logError) return reply({ error: 'server' }, 500);
 
-  const { error } = await admin.from('scores').insert(check.row);
+  const { row } = check;
+  const { data: improved, error } = await admin.rpc('submit_best_score', {
+    p_name: row.name, p_mode: row.mode, p_difficulty: row.difficulty,
+    p_score: row.score, p_apples: row.apples, p_level: row.level,
+  });
   if (error) return reply({ error: 'server' }, 500);
-  return reply({ ok: true }, 201);
+  return reply({ ok: true, improved: improved === true }, 201);
 });
