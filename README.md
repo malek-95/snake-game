@@ -8,7 +8,8 @@ A feature-rich, modern Snake game built with React, TypeScript, and Tailwind CSS
 
 ### Core Gameplay
 - 🎯 Classic Snake gameplay with smooth controls
-- 🎮 Multiple game modes (Classic & Levels)
+- 🎮 Seven game modes: Classic, Levels, Time attack, Survival, Zen, Golden apples and Custom levels
+- 👥 Local 2-player mode on one keyboard
 - ⚡ Three difficulty levels (Easy, Medium, Hard)
 - 🔄 Wall wrap-around option
 - 📱 Responsive design (Desktop & Mobile)
@@ -20,6 +21,11 @@ A feature-rich, modern Snake game built with React, TypeScript, and Tailwind CSS
 - 🎊 Level progression with obstacles
 - 🛡️ Invincibility after death
 - 🌐 Full internationalization (French & English)
+- 🔊 Sound effects and music, generated in the browser (no audio files)
+- 🎖️ 17 achievements, some unlocking new snake skins
+- 🏅 Top 10 leaderboard per mode and difficulty (saved on this device)
+- 🎬 Replays of your last and best game
+- ✏️ Level editor: draw walls, save levels, play them
 
 ### Controls
 - ⌨️ Keyboard (Arrow keys or WASD)
@@ -30,6 +36,7 @@ A feature-rich, modern Snake game built with React, TypeScript, and Tailwind CSS
 ### Customization
 - 📐 Three board sizes (Small, Medium, Large)
 - 🖥️ Fullscreen mode
+- 🎨 7 snake skins and 5 color themes
 - 🎨 Modern UI with animations
 - ⚙️ Comprehensive settings menu
 
@@ -128,6 +135,27 @@ npm run preview
 - Eat X apples to advance
 - Speed increases each level
 
+#### Time Attack
+- Eat as many apples as you can in 2 minutes
+
+#### Survival
+- Every apple makes the snake faster
+
+#### Zen
+- No game over: walls wrap, and biting yourself cuts off your tail
+- Press **End game** when you're done
+
+#### Golden Apples
+- Classic, plus rare golden apples worth 5x that fade after a few seconds
+
+#### Custom
+- Play a level you drew in the editor (✏️ button)
+
+#### 2 Players
+- Player 1: **W A S D** (Z Q S D on AZERTY keyboards), Player 2: **arrow keys**
+- Crash into a wall, yourself or the other snake and you lose the round
+- First to 3 rounds wins the match
+
 ### Scoring
 - **Easy:** 5 points per apple
 - **Medium:** 10 points per apple
@@ -212,15 +240,14 @@ Current languages:
 - [ ] Mobile controls work
 - [ ] Fullscreen mode works
 
-### Automated Testing (Recommended)
+### Automated Testing
 
 ```bash
-# Install testing dependencies
-npm install -D @testing-library/react @testing-library/jest-dom vitest
-
-# Run tests
 npm test
 ```
+
+Covers the game rules and every mode, the 2-player rules, leaderboard ranking,
+achievements, replay encoding, custom level validation and storage fallbacks.
 
 ## 📚 Documentation
 
@@ -231,14 +258,15 @@ npm test
 ## 🔮 Future Enhancements
 
 ### Planned Features
-- [ ] Sound effects and music
-- [ ] Achievements system
-- [ ] Replay system
-- [ ] Custom level editor
-- [ ] Multiplayer mode
-- [ ] More game modes
-- [ ] Skins and themes
-- [ ] Leaderboards
+- [x] Sound effects and music
+- [x] Achievements system
+- [x] Replay system
+- [x] Custom level editor
+- [x] Multiplayer mode (local, 2 players)
+- [x] More game modes
+- [x] Skins and themes
+- [x] Leaderboards (on this device)
+- [ ] Online multiplayer and global leaderboards (need a backend)
 
 ### Potential Improvements
 - [ ] Canvas rendering for better performance

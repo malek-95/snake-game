@@ -19,6 +19,10 @@ import {
   BONUS_CONFIG,
   INVINCIBILITY_TICKS,
   MAX_DIRECTION_QUEUE,
+  TIME_ATTACK_SECONDS,
+  SURVIVAL_SPEEDUP_PER_APPLE,
+  GOLDEN_CONFIG,
+  MIN_TICK_MS,
 } from '../constants/game.constants';
 import {
   getRandomPosition,
@@ -32,6 +36,10 @@ import {
   findSafeSpawnPosition,
   initialSnake,
 } from '../utils/game.utils';
+
+// Levels and custom levels use hand-placed walls, so they keep the 20x20 grid.
+const usesFixedGrid = (mode: GameMode) => mode === 'levels' || mode === 'custom';
+const hasWalls = usesFixedGrid;
 
 export const useSnakeGame = (): UseSnakeGameReturn => {
   // Board grid. Locked while a game runs; between games it follows the size the UI asks for.
@@ -74,6 +82,19 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
   // Invincibility
   const [invincible, setInvincible] = useState(false);
   
+  // Extra modes
+  const [goldenFood, setGoldenFood] = useState<Position | null>(null);
+  const goldenFoodRef = useRef<Position | null>(null);
+  const goldenTicksRef = useRef(0);
+  const [goldenEaten, setGoldenEaten] = useState(0);
+  const goldenEatenRef = useRef(0);
+  const [timeLeft, setTimeLeft] = useState(TIME_ATTACK_SECONDS);
+  const timeLeftRef = useRef(TIME_ATTACK_SECONDS);
+  const [tailCuts, setTailCuts] = useState(0);
+  const [gameId, setGameId] = useState(0);
+  const [customObstacles, setCustomObstacles] = useState<Position[]>([]);
+  const customObstaclesRef = useRef<Position[]>([]);
+
   // Events
   const [bonusEvent, setBonusEvent] = useState<BonusEvent | null>(null);
   const [lifeLostEvent, setLifeLostEvent] = useState<LifeLostEvent | null>(null);
@@ -232,8 +253,10 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
     
     let newHead = getNextPosition(head, currentDir);
 
+    const mode = gameModeRef.current;
+
     if (isOutOfBounds(newHead, gridRef.current)) {
-      if (wrapAroundRef.current) {
+      if (wrapAroundRef.current || mode === 'zen') {
         newHead = wrapPosition(newHead, gridRef.current);
       } else {
         handleDeath();
@@ -242,9 +265,26 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
     }
 
     const willEatFood = newHead.x === currentFood.x && newHead.y === currentFood.y;
-    
-    if (collidesWithSnake(newHead, currentSnake, !willEatFood)) {
-      handleDeath();
+    const golden = goldenFoodRef.current;
+    const willEatGolden = !!golden && newHead.x === golden.x && newHead.y === golden.y;
+
+    // Golden apples fade after a while.
+    if (golden && !willEatGolden && --goldenTicksRef.current <= 0) {
+      goldenFoodRef.current = null;
+      setGoldenFood(null);
+    }
+
+    if (collidesWithSnake(newHead, currentSnake, !(willEatFood || willEatGolden))) {
+      if (mode !== 'zen') {
+        handleDeath();
+        return;
+      }
+      // Zen: no game over, the snake just loses everything behind the bite.
+      const hit = currentSnake.findIndex(seg => seg.x === newHead.x && seg.y === newHead.y);
+      const cut = [newHead, ...currentSnake.slice(0, hit)];
+      setSnake(cut);
+      snakeRef.current = cut;
+      setTailCuts(c => c + 1);
       return;
     }
 
@@ -253,14 +293,36 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
       if (invincibleTicksRef.current === 0) {
         setInvincible(false);
       }
-    } else if (gameModeRef.current === 'levels' && collidesWithObstacle(newHead, obstaclesRef.current)) {
+    } else if (hasWalls(mode) && collidesWithObstacle(newHead, obstaclesRef.current)) {
       handleDeath();
       return;
     }
 
+    const addScore = (points: number) => {
+      const newScore = scoreRef.current + points;
+      setScore(newScore);
+      scoreRef.current = newScore;
+      setHighScore(prev => {
+        if (newScore > prev) {
+          try {
+            localStorage.setItem('snake-high-score', newScore.toString());
+          } catch { /* ignore */ }
+          return newScore;
+        }
+        return prev;
+      });
+    };
+
     let newSnake: Position[];
     
-    if (willEatFood) {
+    if (willEatGolden) {
+      newSnake = [newHead, ...currentSnake];
+      addScore(SCORE_CONFIG[difficulty] * multiplierRef.current * GOLDEN_CONFIG.pointsMultiplier);
+      goldenEatenRef.current += 1;
+      setGoldenEaten(goldenEatenRef.current);
+      goldenFoodRef.current = null;
+      setGoldenFood(null);
+    } else if (willEatFood) {
       newSnake = [newHead, ...currentSnake];
       
       const newApplesEaten = applesEatenRef.current + 1;
@@ -297,21 +359,9 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
       }
       
       // Score before the level check: the level-completing apple counts too.
-      const newScore = scoreRef.current + SCORE_CONFIG[difficulty] * currentMultiplier;
-      setScore(newScore);
-      scoreRef.current = newScore;
+      addScore(SCORE_CONFIG[difficulty] * currentMultiplier);
 
-      setHighScore(prev => {
-        if (newScore > prev) {
-          try {
-            localStorage.setItem('snake-high-score', newScore.toString());
-          } catch { /* ignore */ }
-          return newScore;
-        }
-        return prev;
-      });
-
-      if (gameModeRef.current === 'levels') {
+      if (mode === 'levels') {
         const newLevelApples = levelApplesRef.current + 1;
         levelApplesRef.current = newLevelApples;
         setLevelApples(newLevelApples);
@@ -351,9 +401,17 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
         }
       }
       
-      const newFood = getRandomPosition(newSnake, obstaclesRef.current, gridRef.current);
+      const blocked = goldenFoodRef.current ? [...obstaclesRef.current, goldenFoodRef.current] : obstaclesRef.current;
+      const newFood = getRandomPosition(newSnake, blocked, gridRef.current);
       setFood(newFood);
       foodRef.current = newFood;
+
+      if (mode === 'golden' && !goldenFoodRef.current && Math.random() < GOLDEN_CONFIG.spawnChance) {
+        const g = getRandomPosition(newSnake, [...obstaclesRef.current, newFood], gridRef.current);
+        goldenFoodRef.current = g;
+        goldenTicksRef.current = GOLDEN_CONFIG.lifetimeTicks;
+        setGoldenFood(g);
+      }
     } else {
       newSnake = [newHead, ...currentSnake.slice(0, -1)];
     }
@@ -362,22 +420,44 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
     snakeRef.current = newSnake;
   }, [difficulty, handleDeath]);
 
+  // Survival speeds up with every apple; only then does the apple count restart the loop.
+  const survivalApples = gameMode === 'survival' ? applesEaten : 0;
+
   const startGameLoop = useCallback(() => {
     clearGameLoop();
     const baseSpeed = SPEED_CONFIG[difficulty];
-    const speedMultiplier = gameMode === 'levels' ? generateLevelConfig(level).speedMultiplier : 1;
-    const actualSpeed = Math.max(40, baseSpeed / speedMultiplier);
+    const speedMultiplier =
+      gameMode === 'levels' ? generateLevelConfig(level).speedMultiplier
+      : gameMode === 'survival' ? 1 + survivalApples * SURVIVAL_SPEEDUP_PER_APPLE
+      : 1;
+    const actualSpeed = Math.max(MIN_TICK_MS, baseSpeed / speedMultiplier);
     gameLoopRef.current = window.setInterval(moveSnake, actualSpeed);
-  }, [clearGameLoop, moveSnake, difficulty, gameMode, level]); // level in deps: the loop restarts faster on each new level
+  }, [clearGameLoop, moveSnake, difficulty, gameMode, level, survivalApples]); // level/apples in deps: the loop restarts faster
+
+  // Time attack clock (stops while paused).
+  useEffect(() => {
+    if (gameState !== 'playing' || gameMode !== 'timeAttack') return;
+    const id = window.setInterval(() => {
+      timeLeftRef.current = Math.max(0, timeLeftRef.current - 1);
+      setTimeLeft(timeLeftRef.current);
+      if (timeLeftRef.current === 0) setGameState('gameover');
+    }, 1000);
+    return () => clearInterval(id);
+  }, [gameState, gameMode]);
+
+  const obstaclesFor = (mode: GameMode): Position[] =>
+    mode === 'levels' ? generateLevelConfig(1).obstacles
+    : mode === 'custom' ? customObstaclesRef.current
+    : [];
 
   const startGame = useCallback(() => {
-    const startGrid = gameModeRef.current === 'levels' ? DEFAULT_GRID : preferredGridRef.current;
+    const startGrid = usesFixedGrid(gameModeRef.current) ? DEFAULT_GRID : preferredGridRef.current;
     gridRef.current = startGrid;
     setGrid(startGrid);
     const startSnake = initialSnake(startGrid);
     
     // Always reset level state so obstacles from a previous levels game don't linger in classic mode.
-    const initialObstacles = gameModeRef.current === 'levels' ? generateLevelConfig(1).obstacles : [];
+    const initialObstacles = obstaclesFor(gameModeRef.current);
     setObstacles(initialObstacles);
     obstaclesRef.current = initialObstacles;
     setLevel(1);
@@ -407,8 +487,29 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
     setBonusLivesGiven(0);
     bonusLivesGivenRef.current = 0;
     invincibleTicksRef.current = 0;
+    setInvincible(false);
+    goldenFoodRef.current = null;
+    setGoldenFood(null);
+    goldenEatenRef.current = 0;
+    setGoldenEaten(0);
+    timeLeftRef.current = TIME_ATTACK_SECONDS;
+    setTimeLeft(TIME_ATTACK_SECONDS);
+    setTailCuts(0);
+    setGameId(id => id + 1);
     setGameState('playing');
     gameStateRef.current = 'playing';
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- obstaclesFor only reads refs
+
+  const endGame = useCallback(() => {
+    if (gameStateRef.current === 'playing' || gameStateRef.current === 'paused') {
+      setGameState('gameover');
+      gameStateRef.current = 'gameover';
+    }
+  }, []);
+
+  const setCustomLevel = useCallback((next: Position[]) => {
+    customObstaclesRef.current = next;
+    setCustomObstacles(next);
   }, []);
 
   const togglePause = useCallback(() => {
@@ -438,16 +539,19 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
   // Before the first game, show the board (and a centred snake) at the size the next game will use.
   useEffect(() => {
     if (gameState !== 'idle') return;
-    const next = gameMode === 'levels' ? DEFAULT_GRID : preferredGrid;
+    const next = usesFixedGrid(gameMode) ? DEFAULT_GRID : preferredGrid;
     gridRef.current = next;
     setGrid(next);
+    const obs = obstaclesFor(gameMode);
+    setObstacles(obs);
+    obstaclesRef.current = obs;
     const s = initialSnake(next);
     setSnake(s);
     snakeRef.current = s;
-    const f = { x: s[0].x + 5, y: s[0].y };
+    const f = getRandomPosition(s, obs, next);
     setFood(f);
     foodRef.current = f;
-  }, [gameState, gameMode, preferredGrid]);
+  }, [gameState, gameMode, preferredGrid, customObstacles]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const changeDirection = useCallback((newDir: Direction) => {
     const queue = directionQueueRef.current;
@@ -497,6 +601,13 @@ export const useSnakeGame = (): UseSnakeGameReturn => {
     invincible,
     grid,
     setPreferredGrid,
+    goldenFood,
+    goldenEaten,
+    timeLeft,
+    tailCuts,
+    gameId,
+    setCustomLevel,
+    endGame,
     bonusEvent,
     lifeLostEvent,
     lifeGainedEvent,
