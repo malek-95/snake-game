@@ -44,6 +44,10 @@ interface Props {
   onMatchWon: () => void;
   /** Online: swipes and the on-screen D-pad steer my snake. */
   onTurn?: (dir: Direction) => void;
+  /** Online: the other player's username, when they have one. */
+  opponentName?: string;
+  /** Online: ranked match info shown on the overlay. */
+  note?: string;
 }
 
 const ARROWS: Record<Direction, string> = { UP: '▲', DOWN: '▼', LEFT: '◀', RIGHT: '▶' };
@@ -60,6 +64,7 @@ export interface ReactionBubble {
 export const VersusView = ({
   state, ended, wins, phase, myIndex, fit, tickMs, skin, theme, musicOn, t,
   roomCode, pingMs, peerGone, wrap, onToggleWrap, powerUps, onTogglePowerUps, rematch, reactions, onStart, onExit, onMatchWon, onTurn,
+  opponentName, note,
 }: Props) => {
   const skins = [skin, rivalSkin(skin)];
 
@@ -104,7 +109,7 @@ export const VersusView = ({
   const winner = ended ? matchWinner(ended) : null;
   const names = myIndex === null
     ? [t('player1'), t('player2')]
-    : [0, 1].map(i => (i === myIndex ? t('you') : t('friend')));
+    : [0, 1].map(i => (i === myIndex ? t('you') : opponentName ?? t('friend')));
   const result = ended?.result ?? null;
   const resultText =
     result === 'draw' ? t('draw')
@@ -173,6 +178,7 @@ export const VersusView = ({
               ) : (
                 <>
                   <h2 className="text-2xl md:text-3xl font-bold text-white">{phase === 'ready' ? (roomCode ? t('online') : t('versus')) : resultText}</h2>
+                  {note && <p className="text-yellow-300 font-semibold" role="status">{note}</p>}
                   <p className="text-gray-300 text-sm">{t('firstTo')}</p>
                   {/* Round options: whoever may change them gets buttons, the other player just sees them. */}
                   <div className="flex flex-wrap justify-center gap-2">

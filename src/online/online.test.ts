@@ -4,6 +4,8 @@ import { fetchWorldTop, submitWorldScore, fetchDailyGhost } from './worldLeaderb
 import { createClient } from '@supabase/supabase-js';
 import { supabase } from './client';
 import { quickMatch } from './quickMatch';
+import { saveUsername, reportRankedResult, fetchMyProfile, fetchLadder } from './account';
+import { eloDelta } from '../game/elo';
 
 // Each player gets their own connection, like separate browsers would.
 const player = () =>
@@ -154,4 +156,49 @@ backend('online rooms (live backend)', () => {
   it('reports a room nobody is hosting', async () => {
     await expect(openRoom(makeRoomCode(), 'guest', 1500)).rejects.toBe('notFound');
   }, 10000);
+});
+
+backend('ranked ladder (live backend)', () => {
+  it('needs a unique username, case-insensitive', async () => {
+    const name = `zzRank${Date.now() % 100000}`;
+    await saveUsername(name, player());
+    await expect(saveUsername(name.toUpperCase(), player())).rejects.toBe('taken');
+    await expect(saveUsername(' ', player())).rejects.toBe('invalid');
+  });
+
+  it('changes ratings only when both players report the same winner, once', async () => {
+    const id = Date.now() % 100000;
+    const [a, b] = [player(), player()];
+    const pa = await saveUsername(`zzA${id}`, a);
+    const pb = await saveUsername(`zzB${id}`, b);
+    // Renaming keeps the same account.
+    expect((await saveUsername(`zzA${id}x`, a)).id).toBe(pa.id);
+
+    // Each claims a win: nothing counts.
+    const fight = `test-${id}-1`;
+    expect(await reportRankedResult(fight, pb.id, pa.id, a, 1)).toEqual({ status: 'waiting' });
+    expect(await reportRankedResult(fight, pa.id, pb.id, b, 1)).toEqual({ status: 'mismatch' });
+
+    // Both agree A won.
+    const match = `test-${id}-2`;
+    const [ra, rb] = await Promise.all([
+      reportRankedResult(match, pb.id, pa.id, a, 5, 300),
+      reportRankedResult(match, pa.id, pa.id, b, 5, 300),
+    ]);
+    const d = eloDelta(1000, 1000);
+    expect(ra).toEqual({ status: 'done', rating: 1000 + d, delta: d });
+    expect(rb).toEqual({ status: 'done', rating: 1000 - d, delta: -d });
+    // Reporting again changes nothing.
+    expect(await reportRankedResult(match, pb.id, pa.id, a, 1)).toEqual(ra);
+
+    // B wins the rematch: the server's formula matches eloDelta for unequal ratings too.
+    const upset = eloDelta(1000 - d, 1000 + d);
+    await reportRankedResult(`test-${id}-3`, pb.id, pb.id, a, 1);
+    expect(await reportRankedResult(`test-${id}-3`, pa.id, pb.id, b, 1)).toEqual({ status: 'done', rating: 1000 - d + upset, delta: upset });
+
+    // Nobody can write their own rating.
+    await a.from('profiles').update({ rating: 9999 }).eq('id', pa.id);
+    expect((await fetchMyProfile(a))?.rating).toBe(1000 + d - upset);
+    expect((await fetchLadder(200)).some(p => p.id === pb.id)).toBe(true);
+  });
 });

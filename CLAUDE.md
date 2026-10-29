@@ -15,15 +15,17 @@ A browser Snake game (React 18 + TypeScript + Vite 6 + Tailwind 4), installable 
 - Local 2 players (one keyboard) and **online 2 players** (room codes, invite links `?room=ABCD`, quick match)
 - Online extras: rollback netcode + adaptive input delay, wall passing, power-ups (👻 ghost, ❄️ freeze, ✂️ scissors), emoji reactions, two-sided rematch, live ping
 - World leaderboard (one best score per player name per mode/difficulty), daily challenge board, ghost race vs today's best daily run
+- **Ranked 1v1**: optional username account (anonymous sign-in, set in the online lobby), Elo rating (start 1000, K=32), ladder tab in the leaderboard; matches count only when both players are signed in and both report the same winner
 - PWA with "New version available – Update" prompt
 
 ## Code map
 - `src/App.tsx` – main screen, modals, screens (game / versus / online / editor)
 - `src/hooks/useSnakeGame.ts` – single-player engine (modes, scoring, seeded RNG for daily)
 - `src/game/versus.ts` – deterministic 2-player rules (seeded food, wrap, power-ups)
+- `src/game/elo.ts` – `eloDelta` (must match the SQL in the ranked migration; a live test checks), `cleanUsername`
 - `src/game/rollback.ts` – rollback netcode session (prediction, rewind/replay, input delay, `inputDelayFor`)
 - `src/components/` – `Board` (stars, snake SVG layer, items), `VersusView` (2P UI), `VersusScreen` (local), `OnlineVersus` (online), `OnlineLobby`, modals, `UpdatePrompt`
-- `src/online/` – `client.ts` (Supabase, optional), `room.ts` (realtime rooms + presence), `quickMatch.ts`, `worldLeaderboard.ts`
+- `src/online/` – `client.ts` (Supabase, optional; persists the auth session), `account.ts` (username, profile, ladder, ranked reports, `useProfile`), `room.ts` (realtime rooms + presence), `quickMatch.ts`, `worldLeaderboard.ts`
 - `src/features/` – achievements, leaderboard (device), replay recorder, custom levels, skins/themes
 - `src/utils/game.utils.ts` – grid helpers, `gridForArea`, `dailyChallenge`, `seededRandom`, `todayKey`
 - `src/utils/storage.ts` – safe `localStorage` JSON helpers (always use these)
@@ -33,6 +35,8 @@ A browser Snake game (React 18 + TypeScript + Vite 6 + Tailwind 4), installable 
 - `supabase/migrations/` – `scores` (RLS: read-only for browsers), `score_submissions` (rate limit), `submit_best_score()`, `daily_scores` (+ `replay` path for ghosts), `submit_daily_score()`.
 - `supabase/functions/submit-score/` – the **only** way to write scores: `validate.ts` (plausibility rules, must match game constants – a test checks this), rate limit 5/min per IP hash, routes daily scores. Ghost paths checked by `cleanGhostPath`.
 - Online play uses Supabase Realtime broadcast + presence only (no server game code).
+- Accounts/ranked (`20261030090000_ranked.sql`): anonymous sign-ins are on (`supabase/config.toml`, pushed with `npx supabase config push --project-ref uujhzxapilbqkdcqijpn`). `profiles` (unique lower(username), public read, no direct writes), `set_username()`, `ranked_reports` + `ranked_matches` (private), `report_ranked_result(match, opponent, winner)`: settles once when both reports agree (advisory lock per match). Match id = `<room code>-<first round seed>`; players swap ids with a `hello` room message.
+- After changing `[auth]` in `config.toml` locally: `npx supabase stop && npx supabase start -x …` (a restart of one container is not enough).
 - **Deploy backend** (the user approved "deploy as needed"): push the migration, then deploy the function seconds later, then merge the PR:
   ```bash
   npx supabase db push --linked --yes
@@ -51,12 +55,13 @@ A browser Snake game (React 18 + TypeScript + Vite 6 + Tailwind 4), installable 
 - The user writes in mixed French/English and is not deeply technical: keep explanations short and plain.
 
 ## Remaining roadmap (from "what to add for more online fun")
-Done: reactions + rematch, daily challenge, power-ups, ghost race, quick match.
+Done: reactions + rematch, daily challenge, power-ups, ghost race, quick match, username accounts + ranked ladder.
 Left:
-1. **Username accounts + ranked ladder** – user chose *username only*: Supabase anonymous sign-in + unique username table; ranked 1v1 rating (Elo) updated server-side after online matches (needs anonymous sign-ins enabled on the project and a result-reporting path both players agree on).
-2. **3–4 player party matches** – generalize `versus.ts` / `rollback.ts` from 2 to N players.
+1. **3–4 player party matches** – generalize `versus.ts` / `rollback.ts` from 2 to N players.
 
 ## Known limits
 - Scores are plausibility-checked, not proven (single player runs in the browser).
-- Players are identified by name until accounts exist (two "Ali"s share an entry).
+- World scores are still by name (two "Ali"s share an entry); only the ranked ladder uses accounts.
+- Ranked accounts live in one browser (clearing site data loses it; no login on another device). Leaving mid-match or refusing to report means no result; one person with two browsers can farm rating.
+- The full `npm test` with a backend sends more than 5 scores/min, so some score tests hit the rate limit; run them in parts ~60s apart.
 - Supabase free tier pauses after ~1 week without activity.

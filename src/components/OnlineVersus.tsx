@@ -6,12 +6,15 @@ import { RollbackSession, inputDelayFor, type InputMessage } from '../game/rollb
 import { getOppositeDirection } from '../utils/game.utils';
 import { SPEED_CONFIG, MAX_DIRECTION_QUEUE } from '../constants/game.constants';
 import type { Room } from '../online/room';
+import { reportRankedResult, type Profile, type RankedResult } from '../online/account';
 import type { Skin, Theme } from '../features/look';
 import type { Difficulty, Direction } from '../types/game.types';
 import type { TFunction } from '../i18n/useTranslation';
 
 interface Props {
   room: Room;
+  /** My ranked account; the match counts for the ladder when both players have one. */
+  profile: Profile | null;
   difficulty: Difficulty;
   skin: Skin;
   theme: Theme;
@@ -49,7 +52,7 @@ declare global {
  * at once, and the other snake is corrected when their turns arrive. The host only picks when a
  * round starts and its random seed.
  */
-export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit, onMatchWon }: Props) => {
+export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, t, onExit, onMatchWon }: Props) => {
   const fit = useBoardFit(true);
   const me: 0 | 1 = room.role === 'host' ? 0 : 1;
   const isHost = me === 0;
@@ -92,9 +95,25 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
   endedRef.current = ended;
   const winsRef = useRef(wins);
   winsRef.current = wins;
+  // Ranked: who the other player is (they tell us), and this match's id (room code + first round's seed).
+  const [opponent, setOpponent] = useState<{ id: string; name: string; rating: number } | null>(null);
+  const opponentRef = useRef(opponent);
+  const matchId = useRef('');
+  const reported = useRef('');
+  const [rankedResult, setRankedResult] = useState<RankedResult | 'error' | null>(null);
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
+  const sayHello = useCallback(() => {
+    const p = profileRef.current;
+    if (p) room.send('hello', { id: p.id, name: p.username, rating: p.rating });
+  }, [room]);
 
   const beginRound = useCallback((r: number, seed: number, w: [number, number], ms: number, wallPass: boolean, powers: boolean) => {
     const start = newRound(ONLINE_GRID, w, seed, wallPass, powers);
+    if (w[0] === 0 && w[1] === 0) {
+      matchId.current = `${room.code}-${seed}`;
+      setRankedResult(null);
+    }
     const s = new RollbackSession(start, me, 12, inputDelayFor(median(rtts.current), ms));
     for (const m of early.current.get(r) ?? []) s.receive(m);
     early.current.delete(r);
@@ -112,7 +131,7 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
     setWins(w);
     setRematch({ me: false, them: false });
     setPhase('playing');
-  }, [me]);
+  }, [me, room.code]);
 
   const showBubble = useCallback((from: 0 | 1, emoji: string) => {
     const id = ++bubbleId.current;
@@ -184,6 +203,7 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
     room.setHandlers({
       onPeer: present => {
         setPeerGone(!present);
+        if (present) sayHello();
         if (present && isHost) room.send('settings', { wrap: wrapRef.current, powerUps: powerUpsRef.current }); // a guest who just joined sees the setting
       },
       onMessage: (event, p) => {
@@ -203,6 +223,16 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
             if (!isHost) {
               setWrap(!!p.wrap);
               setPowerUps(!!p.powerUps);
+            }
+            break;
+          case 'hello':
+            // Same account in two tabs plays unranked.
+            if (typeof p.id === 'string' && p.id !== profileRef.current?.id && typeof p.name === 'string' && typeof p.rating === 'number') {
+              const first = !opponentRef.current;
+              const opp = { id: p.id, name: p.name.slice(0, 16), rating: p.rating };
+              opponentRef.current = opp;
+              setOpponent(opp);
+              if (first) sayHello(); // they may have joined after my hello
             }
             break;
           case 'react':
@@ -236,7 +266,7 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
         }
       },
     });
-  }, [room, isHost, beginRound]);
+  }, [room, isHost, beginRound, sayHello]);
 
   // Measure the round trip continuously (shown in the corner, used to line up the two clocks).
   useEffect(() => {
@@ -302,6 +332,28 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
     return () => clearInterval(id);
   }, [phase, peerGone, tickMs, room, isHost]);
 
+  // Ranked: once the match is won, both players report the winner; the server counts it if they agree.
+  useEffect(() => {
+    const winner = ended ? matchWinner(ended) : null;
+    if (winner === null || !profile || !opponent || !matchId.current || reported.current === matchId.current) return;
+    reported.current = matchId.current;
+    setRankedResult({ status: 'waiting' });
+    reportRankedResult(matchId.current, opponent.id, winner === me ? profile.id : opponent.id)
+      .then(r => {
+        setRankedResult(r);
+        if (r.status === 'done') setOpponent(o => o && { ...o, rating: o.rating - r.delta });
+      })
+      .catch(() => setRankedResult('error'));
+  }, [ended, profile, opponent, me]);
+
+  const ranked = !!profile && !!opponent;
+  const note = !ranked ? undefined
+    : rankedResult === null ? `${t('ranked')} · ${opponent.name} (${opponent.rating})`
+    : rankedResult === 'error' ? t('serverError')
+    : rankedResult.status === 'waiting' ? t('rankedWaiting')
+    : rankedResult.status === 'mismatch' ? t('rankedMismatch')
+    : `${t('rating')}: ${rankedResult.rating} (${rankedResult.delta >= 0 ? '+' : ''}${rankedResult.delta})`;
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return;
@@ -348,6 +400,8 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
       onExit={onExit}
       onMatchWon={onMatchWon}
       onTurn={onTurn}
+      opponentName={opponent?.name}
+      note={note}
     />
   );
 };
