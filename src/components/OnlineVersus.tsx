@@ -61,6 +61,10 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
   const [peerGone, setPeerGone] = useState(false);
   const [pingMs, setPingMs] = useState<number | null>(null);
   const [tickMs, setTickMs] = useState(SPEED_CONFIG[difficulty]);
+  // Wall passing: the host decides, the guest is told.
+  const [wrap, setWrap] = useState(false);
+  const wrapRef = useRef(wrap);
+  wrapRef.current = wrap;
 
   const session = useRef<RollbackSession | null>(null);
   const round = useRef(0);
@@ -77,8 +81,8 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
   const winsRef = useRef(wins);
   winsRef.current = wins;
 
-  const beginRound = useCallback((r: number, seed: number, w: [number, number], ms: number) => {
-    const start = newRound(ONLINE_GRID, w, seed);
+  const beginRound = useCallback((r: number, seed: number, w: [number, number], ms: number, wallPass: boolean) => {
+    const start = newRound(ONLINE_GRID, w, seed, wallPass);
     const s = new RollbackSession(start, me);
     for (const m of early.current.get(r) ?? []) s.receive(m);
     early.current.delete(r);
@@ -88,6 +92,7 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
     lastCheck.current = 0;
     theirChecks.current = [];
     setTickMs(ms);
+    setWrap(wallPass);
     setView(start);
     setEnded(null);
     setWins(w);
@@ -101,11 +106,18 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
     const r = round.current + 1;
     const seed = randomSeed();
     const ms = SPEED_CONFIG[difficulty];
-    room.send('round', { r, seed, wins: w, ms });
-    setTimeout(() => beginRound(r, seed, w, ms), (median(rtts.current) ?? 0) / 2);
+    const wallPass = wrapRef.current;
+    room.send('round', { r, seed, wins: w, ms, wrap: wallPass });
+    setTimeout(() => beginRound(r, seed, w, ms, wallPass), (median(rtts.current) ?? 0) / 2);
   }, [room, difficulty, beginRound]);
   const hostStartRef = useRef(hostStartRound);
   hostStartRef.current = hostStartRound;
+
+  const toggleWrap = useCallback(() => {
+    const next = !wrapRef.current;
+    setWrap(next);
+    room.send('settings', { wrap: next });
+  }, [room]);
 
   const onStart = useCallback(() => {
     if (isHost) hostStartRound();
@@ -125,7 +137,10 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
   // Messages from the other player.
   useEffect(() => {
     room.setHandlers({
-      onPeer: present => setPeerGone(!present),
+      onPeer: present => {
+        setPeerGone(!present);
+        if (present && isHost) room.send('settings', { wrap: wrapRef.current }); // a guest who just joined sees the setting
+      },
       onMessage: (event, p) => {
         const r = p.r as number;
         switch (event) {
@@ -137,7 +152,10 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
             setPingMs(median(rtts.current));
             break;
           case 'round':
-            if (!isHost) beginRound(r, p.seed as number, p.wins as [number, number], p.ms as number);
+            if (!isHost) beginRound(r, p.seed as number, p.wins as [number, number], p.ms as number, !!p.wrap);
+            break;
+          case 'settings':
+            if (!isHost) setWrap(!!p.wrap);
             break;
           case 'start':
             if (isHost && phaseRef.current !== 'playing') hostStartRef.current();
@@ -263,6 +281,8 @@ export const OnlineVersus = ({ room, difficulty, skin, theme, musicOn, t, onExit
       roomCode={room.code}
       pingMs={pingMs}
       peerGone={peerGone}
+      wrap={wrap}
+      onToggleWrap={isHost ? toggleWrap : undefined}
       onStart={onStart}
       onExit={onExit}
       onMatchWon={onMatchWon}
