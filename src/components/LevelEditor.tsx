@@ -109,6 +109,7 @@ export const LevelEditor = ({ levels, saveLevel, deleteLevel, onPlay, onBack, sk
             food={null}
             obstacles={obstacles}
             shaded={NO_BUILD}
+            showGrid
             className="w-full max-w-[min(90vw,70vh)] aspect-square touch-none cursor-crosshair"
           >
             <div

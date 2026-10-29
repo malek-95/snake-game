@@ -154,7 +154,7 @@ export const SettingsModal = (p: Props) => {
         </Section>
 
         <Section label={t('theme')}>
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {THEMES.map(th => (
               <button
                 key={th.id}
