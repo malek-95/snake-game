@@ -154,19 +154,19 @@ function App() {
   const boardSizeClasses: Record<BoardSize, string> = {
     small: 'w-full max-w-[80vw] sm:max-w-md',
     medium: 'w-full max-w-[90vw] sm:max-w-lg',
-    large: 'w-screen h-screen max-w-none max-h-none',
+    large: 'w-full max-w-none',
   };
 
 
 
   return (
-    <div ref={containerRef} className={`min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-900 flex flex-col items-center select-none ${boardSize === 'large' ? 'p-0' : 'p-3 md:p-4 pb-8'}`}>
+    <div ref={containerRef} className={`min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-900 flex flex-col items-center select-none ${boardSize === 'large' ? 'p-0 h-screen overflow-hidden' : 'p-3 md:p-4 pb-8'}`}>
       {/* Main content wrapper */}
-      <div className={`w-full flex flex-col items-center justify-center flex-grow ${boardSize === 'large' ? 'py-0' : 'py-4'}`}>
+      <div className={`w-full flex flex-col items-center justify-center flex-grow ${boardSize === 'large' ? 'py-2 h-full' : 'py-4'}`}>
       {/* Header */}
-      <div className={`w-full mb-3 md:mb-4 ${boardSize === 'large' ? 'max-w-full px-4' : 'max-w-[90vw] sm:max-w-md md:max-w-lg'}`}>
-        <div className="flex items-center justify-between mb-3">
-          <h1 className={`font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 ${boardSize === 'large' ? 'text-3xl md:text-5xl' : 'text-2xl md:text-4xl'}`}>
+      <div className={`w-full ${boardSize === 'large' ? 'max-w-full px-4 mb-2' : 'max-w-[90vw] sm:max-w-md md:max-w-lg mb-3 md:mb-4'}`}>
+        <div className={`flex items-center justify-between ${boardSize === 'large' ? 'mb-2' : 'mb-3'}`}>
+          <h1 className={`font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 ${boardSize === 'large' ? 'text-2xl md:text-4xl' : 'text-2xl md:text-4xl'}`}>
             🐍 Snake
           </h1>
           <button
@@ -179,32 +179,32 @@ function App() {
         </div>
 
         {/* Score Board */}
-        <div className={`flex justify-between items-center bg-gray-800/60 backdrop-blur-sm rounded-2xl border border-gray-700/50 shadow-lg ${boardSize === 'large' ? 'px-6 py-4' : 'px-2 sm:px-4 py-2 sm:py-3'}`}>
+        <div className={`flex justify-between items-center bg-gray-800/60 backdrop-blur-sm rounded-2xl border border-gray-700/50 shadow-lg ${boardSize === 'large' ? 'px-4 py-2' : 'px-2 sm:px-4 py-2 sm:py-3'}`}>
           <div className="text-center flex-1">
-            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-xs sm:text-sm' : 'text-[9px] sm:text-xs'}`}>{t('score')}</p>
-            <p className={`font-bold text-white tabular-nums ${boardSize === 'large' ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-2xl'}`}>{score}</p>
+            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-[10px] sm:text-xs' : 'text-[9px] sm:text-xs'}`}>{t('score')}</p>
+            <p className={`font-bold text-white tabular-nums ${boardSize === 'large' ? 'text-xl sm:text-2xl' : 'text-lg sm:text-2xl'}`}>{score}</p>
           </div>
-          <div className={`bg-gray-700 ${boardSize === 'large' ? 'w-px h-10' : 'w-px h-8'}`} />
+          <div className={`bg-gray-700 ${boardSize === 'large' ? 'w-px h-8' : 'w-px h-8'}`} />
           <div className="text-center flex-1">
-            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-xs sm:text-sm' : 'text-[10px] md:text-xs'}`}>{t('record')}</p>
-            <p className={`font-bold text-yellow-400 tabular-nums ${boardSize === 'large' ? 'text-2xl sm:text-3xl' : 'text-xl md:text-2xl'}`}>{highScore}</p>
+            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-[10px] sm:text-xs' : 'text-[10px] md:text-xs'}`}>{t('record')}</p>
+            <p className={`font-bold text-yellow-400 tabular-nums ${boardSize === 'large' ? 'text-xl sm:text-2xl' : 'text-xl md:text-2xl'}`}>{highScore}</p>
           </div>
-          <div className={`bg-gray-700 ${boardSize === 'large' ? 'w-px h-10' : 'w-px h-8'}`} />
+          <div className={`bg-gray-700 ${boardSize === 'large' ? 'w-px h-8' : 'w-px h-8'}`} />
           <div className="text-center flex-1">
-            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-xs sm:text-sm' : 'text-[10px] md:text-xs'}`}>{t('bonus')}</p>
-            <p className={`font-bold tabular-nums ${multiplier > 1 ? 'text-orange-400' : 'text-gray-500'} ${boardSize === 'large' ? 'text-2xl sm:text-3xl' : 'text-lg md:text-xl'}`}>
+            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-[10px] sm:text-xs' : 'text-[10px] md:text-xs'}`}>{t('bonus')}</p>
+            <p className={`font-bold tabular-nums ${multiplier > 1 ? 'text-orange-400' : 'text-gray-500'} ${boardSize === 'large' ? 'text-xl sm:text-2xl' : 'text-lg md:text-xl'}`}>
               x{multiplier}
             </p>
           </div>
-          <div className={`bg-gray-700 ${boardSize === 'large' ? 'w-px h-10' : 'w-px h-8'}`} />
+          <div className={`bg-gray-700 ${boardSize === 'large' ? 'w-px h-8' : 'w-px h-8'}`} />
           <div className="text-center flex-1">
-            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-xs sm:text-sm' : 'text-[10px] md:text-xs'}`}>{t('apples')}</p>
-            <p className={`font-bold text-red-400 tabular-nums ${boardSize === 'large' ? 'text-2xl sm:text-3xl' : 'text-lg md:text-xl'}`}>{applesEaten}</p>
+            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-[10px] sm:text-xs' : 'text-[10px] md:text-xs'}`}>{t('apples')}</p>
+            <p className={`font-bold text-red-400 tabular-nums ${boardSize === 'large' ? 'text-xl sm:text-2xl' : 'text-lg md:text-xl'}`}>{applesEaten}</p>
           </div>
-          <div className={`bg-gray-700 ${boardSize === 'large' ? 'w-px h-10' : 'w-px h-8'}`} />
+          <div className={`bg-gray-700 ${boardSize === 'large' ? 'w-px h-8' : 'w-px h-8'}`} />
           <div className="text-center flex-1">
-            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-xs sm:text-sm' : 'text-[10px] md:text-xs'}`}>{t('lives')}</p>
-            <p className={`font-bold ${boardSize === 'large' ? 'text-2xl sm:text-3xl' : 'text-lg md:text-xl'}`}>
+            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-[10px] sm:text-xs' : 'text-[10px] md:text-xs'}`}>{t('lives')}</p>
+            <p className={`font-bold ${boardSize === 'large' ? 'text-xl sm:text-2xl' : 'text-lg md:text-xl'}`}>
               {Array.from({ length: lives }).map((_, i) => (
                 <span key={i} className="text-red-500">❤️</span>
               ))}
@@ -235,11 +235,82 @@ function App() {
             <span className="text-xs text-gray-400 tabular-nums">{applesEaten % 10}/10</span>
           </div>
         </div>
+
+        {/* Notifications - Outside game board */}
+        <div className="relative h-16 mt-2">
+          {/* Bonus notification */}
+          {bonusEvent && gameState === 'playing' && (
+            <div
+              key={bonusEvent.id}
+              className="absolute top-0 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
+            >
+              <div className="bg-gradient-to-r from-orange-500/90 to-yellow-500/90 backdrop-blur-sm px-4 py-2 rounded-xl shadow-2xl shadow-orange-500/50 border border-yellow-300/50 animate-bonus-pop">
+                <div className="text-center">
+                  <p className="text-white font-bold text-sm md:text-base">{t('bonusNotification')}</p>
+                  <p className="text-yellow-100 text-xs md:text-sm font-semibold">
+                    x{bonusEvent.multiplier} • {bonusEvent.applesCount} 🍎
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Life lost notification */}
+          {lifeLostEvent && gameState === 'playing' && (
+            <div
+              key={lifeLostEvent.id}
+              className="absolute top-0 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
+            >
+              <div className="bg-gradient-to-r from-red-600/90 to-rose-600/90 backdrop-blur-sm px-4 py-2 rounded-xl shadow-2xl shadow-red-500/50 border border-red-300/50 animate-life-lost-pop">
+                <div className="text-center">
+                  <p className="text-white font-bold text-sm md:text-base">{t('lifeLost')}</p>
+                  <p className="text-red-100 text-xs md:text-sm font-semibold">
+                    {lifeLostEvent.livesRemaining} {t('remaining2')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Life gained notification */}
+          {lifeGainedEvent && gameState === 'playing' && (
+            <div
+              key={lifeGainedEvent.id}
+              className="absolute top-0 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
+            >
+              <div className="bg-gradient-to-r from-green-500/90 to-emerald-500/90 backdrop-blur-sm px-4 py-2 rounded-xl shadow-2xl shadow-green-500/50 border border-green-300/50 animate-life-gained-pop">
+                <div className="text-center">
+                  <p className="text-white font-bold text-sm md:text-base">{t('lifeGained')}</p>
+                  <p className="text-green-100 text-xs md:text-sm font-semibold">
+                    {lifeGainedEvent.lives} {lifeGainedEvent.lives > 1 ? t('totalPlural') : t('total')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Level complete notification */}
+          {levelCompleteEvent && gameState === 'playing' && (
+            <div
+              key={levelCompleteEvent.id}
+              className="absolute top-0 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
+            >
+              <div className="bg-gradient-to-r from-purple-600/90 to-pink-600/90 backdrop-blur-sm px-4 py-2 rounded-xl shadow-2xl shadow-purple-500/50 border border-purple-300/50 animate-level-complete-pop">
+                <div className="text-center">
+                  <p className="text-white font-bold text-sm md:text-base">{t('levelComplete')} {levelCompleteEvent.level} {t('levelCompleteEnd')}</p>
+                  <p className="text-purple-100 text-xs md:text-sm font-semibold">
+                    {t('nextLevel')} {levelCompleteEvent.level + 1}{t('nextLevelEnd')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Game Board */}
       <div
-        className={`relative ${boardSizeClasses[boardSize]} ${boardSize === 'large' ? 'flex-1 min-h-0' : 'aspect-square'} bg-gray-900/80 ${boardSize === 'large' ? 'rounded-none' : 'rounded-2xl'} border-2 overflow-hidden transition-all duration-300 ${
+        className={`relative ${boardSizeClasses[boardSize]} ${boardSize === 'large' ? 'aspect-square max-h-[calc(100vh-200px)] sm:max-h-[calc(100vh-250px)]' : 'aspect-square'} bg-gray-900/80 ${boardSize === 'large' ? 'rounded-none' : 'rounded-2xl'} border-2 overflow-hidden transition-all duration-300 ${
           gameMode === 'levels'
             ? 'border-purple-500/60 shadow-2xl shadow-purple-900/30'
             : wrapAround
@@ -265,74 +336,6 @@ function App() {
             <div className="absolute top-0 bottom-0 left-0 w-1 bg-gradient-to-b from-transparent via-purple-400 to-transparent opacity-60 animate-pulse z-20" />
             <div className="absolute top-0 bottom-0 right-0 w-1 bg-gradient-to-b from-transparent via-purple-400 to-transparent opacity-60 animate-pulse z-20" />
           </>
-        )}
-
-        {/* Bonus notification */}
-        {bonusEvent && gameState === 'playing' && (
-          <div
-            key={bonusEvent.id}
-            className="absolute top-2 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
-          >
-            <div className="bg-gradient-to-r from-orange-500/90 to-yellow-500/90 backdrop-blur-sm px-4 py-2 rounded-xl shadow-2xl shadow-orange-500/50 border border-yellow-300/50 animate-bonus-pop">
-              <div className="text-center">
-                <p className="text-white font-bold text-sm md:text-base">{t('bonusNotification')}</p>
-                <p className="text-yellow-100 text-xs md:text-sm font-semibold">
-                  x{bonusEvent.multiplier} • {bonusEvent.applesCount} 🍎
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Life lost notification */}
-        {lifeLostEvent && gameState === 'playing' && (
-          <div
-            key={lifeLostEvent.id}
-            className="absolute top-2 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
-          >
-            <div className="bg-gradient-to-r from-red-600/90 to-rose-600/90 backdrop-blur-sm px-4 py-2 rounded-xl shadow-2xl shadow-red-500/50 border border-red-300/50 animate-life-lost-pop">
-              <div className="text-center">
-                <p className="text-white font-bold text-sm md:text-base">{t('lifeLost')}</p>
-                <p className="text-red-100 text-xs md:text-sm font-semibold">
-                  {lifeLostEvent.livesRemaining} {t('remaining2')}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Life gained notification */}
-        {lifeGainedEvent && gameState === 'playing' && (
-          <div
-            key={lifeGainedEvent.id}
-            className="absolute top-2 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
-          >
-            <div className="bg-gradient-to-r from-green-500/90 to-emerald-500/90 backdrop-blur-sm px-4 py-2 rounded-xl shadow-2xl shadow-green-500/50 border border-green-300/50 animate-life-gained-pop">
-              <div className="text-center">
-                <p className="text-white font-bold text-sm md:text-base">{t('lifeGained')}</p>
-                <p className="text-green-100 text-xs md:text-sm font-semibold">
-                  {lifeGainedEvent.lives} {lifeGainedEvent.lives > 1 ? t('totalPlural') : t('total')}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Level complete notification */}
-        {levelCompleteEvent && gameState === 'playing' && (
-          <div
-            key={levelCompleteEvent.id}
-            className="absolute top-2 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
-          >
-            <div className="bg-gradient-to-r from-purple-600/90 to-pink-600/90 backdrop-blur-sm px-4 py-2 rounded-xl shadow-2xl shadow-purple-500/50 border border-purple-300/50 animate-level-complete-pop">
-              <div className="text-center">
-                <p className="text-white font-bold text-sm md:text-base">{t('levelComplete')} {levelCompleteEvent.level} {t('levelCompleteEnd')}</p>
-                <p className="text-purple-100 text-xs md:text-sm font-semibold">
-                  {t('nextLevel')} {levelCompleteEvent.level + 1}{t('nextLevelEnd')}
-                </p>
-              </div>
-            </div>
-          </div>
         )}
 
         {/* Snake body segments */}
@@ -399,35 +402,35 @@ function App() {
         {/* Idle Overlay */}
         {gameState === 'idle' && (
           <div className={`absolute inset-0 bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center z-30 ${boardSize === 'large' ? '' : 'rounded-2xl'}`}>
-            <div className={`${boardSize === 'large' ? 'text-7xl md:text-8xl mb-6' : 'text-5xl md:text-6xl mb-4'} animate-bounce`}>🐍</div>
-            <h2 className={`${boardSize === 'large' ? 'text-3xl md:text-4xl mb-3' : 'text-xl md:text-2xl mb-2'} font-bold text-white`}>{t('snakeGame')}</h2>
-            <p className={`text-gray-300 text-center px-6 max-w-xs ${boardSize === 'large' ? 'text-sm md:text-base mb-3' : 'text-xs md:text-sm mb-2'}`}>
+            <div className={`${boardSize === 'large' ? 'text-6xl md:text-7xl mb-4' : 'text-5xl md:text-6xl mb-4'} animate-bounce`}>🐍</div>
+            <h2 className={`${boardSize === 'large' ? 'text-2xl md:text-3xl mb-2' : 'text-xl md:text-2xl mb-2'} font-bold text-white`}>{t('snakeGame')}</h2>
+            <p className={`text-gray-300 text-center px-6 max-w-xs ${boardSize === 'large' ? 'text-xs md:text-sm mb-2' : 'text-xs md:text-sm mb-2'}`}>
               {gameMode === 'classic' 
                 ? t('classicDescription')
                 : t('levelsDescription')}
             </p>
-            <p className={`text-gray-400 mb-6 ${boardSize === 'large' ? 'text-xs md:text-sm' : 'text-[10px]'}`}>
+            <p className={`text-gray-400 mb-4 ${boardSize === 'large' ? 'text-[10px] md:text-xs' : 'text-[10px]'}`}>
               {t('mode')}: {gameMode === 'classic' ? t('classic') : t('levels')}
             </p>
             <button
               onClick={startGame}
-              className={`bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-green-500/25 hover:shadow-green-500/40 hover:scale-105 active:scale-95 transition-all duration-200 ${boardSize === 'large' ? 'px-12 py-4 text-xl md:text-2xl' : 'px-8 py-3 text-lg'}`}
+              className={`bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-green-500/25 hover:shadow-green-500/40 hover:scale-105 active:scale-95 transition-all duration-200 ${boardSize === 'large' ? 'px-10 py-3 text-lg md:text-xl' : 'px-8 py-3 text-lg'}`}
             >
               {t('play')}
             </button>
-            <p className={`text-gray-500 mt-4 ${boardSize === 'large' ? 'text-xs md:text-sm' : 'text-[10px]'}`}>{t('pressEnterOrSpace')}</p>
+            <p className={`text-gray-500 mt-3 ${boardSize === 'large' ? 'text-[10px] md:text-xs' : 'text-[10px]'}`}>{t('pressEnterOrSpace')}</p>
           </div>
         )}
 
         {/* Paused Overlay */}
         {gameState === 'paused' && (
           <div className={`absolute inset-0 bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center z-30 ${boardSize === 'large' ? '' : 'rounded-2xl'}`}>
-            <div className={`${boardSize === 'large' ? 'text-6xl md:text-7xl mb-6' : 'text-4xl md:text-5xl mb-4'}`}>⏸️</div>
-            <h2 className={`${boardSize === 'large' ? 'text-3xl md:text-4xl mb-3' : 'text-xl md:text-2xl mb-2'} font-bold text-white`}>{t('paused')}</h2>
-            <p className={`text-gray-400 mb-6 ${boardSize === 'large' ? 'text-lg md:text-xl' : 'text-sm'}`}>{t('currentScore')} {score}</p>
+            <div className={`${boardSize === 'large' ? 'text-5xl md:text-6xl mb-4' : 'text-4xl md:text-5xl mb-4'}`}>⏸️</div>
+            <h2 className={`${boardSize === 'large' ? 'text-2xl md:text-3xl mb-2' : 'text-xl md:text-2xl mb-2'} font-bold text-white`}>{t('paused')}</h2>
+            <p className={`text-gray-400 mb-4 ${boardSize === 'large' ? 'text-base md:text-lg' : 'text-sm'}`}>{t('currentScore')} {score}</p>
             <button
               onClick={togglePause}
-              className={`bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-105 active:scale-95 transition-all duration-200 ${boardSize === 'large' ? 'px-12 py-4 text-xl md:text-2xl' : 'px-8 py-3'}`}
+              className={`bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-105 active:scale-95 transition-all duration-200 ${boardSize === 'large' ? 'px-10 py-3 text-lg md:text-xl' : 'px-8 py-3'}`}
             >
               {t('resume')}
             </button>
@@ -437,32 +440,32 @@ function App() {
         {/* Game Over Overlay */}
         {gameState === 'gameover' && (
           <div className={`absolute inset-0 bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center z-30 ${boardSize === 'large' ? '' : 'rounded-2xl'}`}>
-            <div className={`${boardSize === 'large' ? 'text-6xl md:text-7xl mb-4' : 'text-4xl md:text-5xl mb-3'}`}>💀</div>
-            <h2 className={`${boardSize === 'large' ? 'text-3xl md:text-4xl mb-4' : 'text-xl md:text-2xl mb-3'} font-bold text-red-400`}>{t('gameOver')}</h2>
-            <div className={`bg-gray-800/80 rounded-xl border border-gray-700 space-y-2 mb-4 ${boardSize === 'large' ? 'px-8 py-5' : 'px-6 py-3'}`}>
+            <div className={`${boardSize === 'large' ? 'text-5xl md:text-6xl mb-3' : 'text-4xl md:text-5xl mb-3'}`}>💀</div>
+            <h2 className={`${boardSize === 'large' ? 'text-2xl md:text-3xl mb-3' : 'text-xl md:text-2xl mb-3'} font-bold text-red-400`}>{t('gameOver')}</h2>
+            <div className={`bg-gray-800/80 rounded-xl border border-gray-700 space-y-2 mb-3 ${boardSize === 'large' ? 'px-6 py-3' : 'px-6 py-3'}`}>
               <p className="text-white text-center">
-                {t('score')}: <span className={`font-bold text-green-400 ${boardSize === 'large' ? 'text-3xl md:text-4xl' : 'text-xl'}`}>{score}</span>
+                {t('score')}: <span className={`font-bold text-green-400 ${boardSize === 'large' ? 'text-2xl md:text-3xl' : 'text-xl'}`}>{score}</span>
               </p>
-              <p className={`text-gray-300 text-center ${boardSize === 'large' ? 'text-base md:text-lg' : 'text-sm'}`}>
+              <p className={`text-gray-300 text-center ${boardSize === 'large' ? 'text-sm md:text-base' : 'text-sm'}`}>
                 🍎 {applesEaten} {t('applesEaten')}
               </p>
               {gameMode === 'levels' && (
-                <p className={`text-purple-300 text-center ${boardSize === 'large' ? 'text-base md:text-lg' : 'text-sm'}`}>
+                <p className={`text-purple-300 text-center ${boardSize === 'large' ? 'text-sm md:text-base' : 'text-sm'}`}>
                   {t('levelReached')} <span className="font-bold">{level}</span>
                 </p>
               )}
-              <p className={`text-gray-300 text-center ${boardSize === 'large' ? 'text-base md:text-lg' : 'text-sm'}`}>
+              <p className={`text-gray-300 text-center ${boardSize === 'large' ? 'text-sm md:text-base' : 'text-sm'}`}>
                 ❤️ {bonusLivesGiven}/3 {t('bonusLivesUsed')}
               </p>
               {score >= highScore && score > 0 && (
-                <p className={`text-yellow-400 text-center mt-2 animate-pulse font-semibold ${boardSize === 'large' ? 'text-base md:text-lg' : 'text-sm'}`}>
+                <p className={`text-yellow-400 text-center mt-2 animate-pulse font-semibold ${boardSize === 'large' ? 'text-sm md:text-base' : 'text-sm'}`}>
                   {t('newRecord')}
                 </p>
               )}
             </div>
             <button
               onClick={startGame}
-              className={`bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-green-500/25 hover:shadow-green-500/40 hover:scale-105 active:scale-95 transition-all duration-200 ${boardSize === 'large' ? 'px-12 py-4 text-xl md:text-2xl' : 'px-8 py-3'}`}
+              className={`bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-green-500/25 hover:shadow-green-500/40 hover:scale-105 active:scale-95 transition-all duration-200 ${boardSize === 'large' ? 'px-10 py-3 text-lg md:text-xl' : 'px-8 py-3'}`}
             >
               {t('playAgain')}
             </button>
@@ -471,13 +474,13 @@ function App() {
       </div>
 
       {/* Controls Section */}
-      <div className={`w-full mt-3 md:mt-4 space-y-3 ${boardSize === 'large' ? 'max-w-full px-4' : 'max-w-[90vw] sm:max-w-md md:max-w-lg'}`}>
+      <div className={`w-full space-y-3 ${boardSize === 'large' ? 'max-w-full px-4 mt-2' : 'max-w-[90vw] sm:max-w-md md:max-w-lg mt-3 md:mt-4'}`}>
         {/* Action Buttons */}
         <div className="flex gap-3 justify-center">
           {gameState === 'playing' && (
             <button
               onClick={togglePause}
-              className={`bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg ${boardSize === 'large' ? 'px-8 py-3 text-base md:text-lg' : 'px-5 py-2.5 text-sm md:text-base'}`}
+              className={`bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg ${boardSize === 'large' ? 'px-6 py-2 text-sm md:text-base' : 'px-5 py-2.5 text-sm md:text-base'}`}
             >
               {t('pause')}
             </button>
@@ -485,7 +488,7 @@ function App() {
           {(gameState === 'playing' || gameState === 'paused') && (
             <button
               onClick={startGame}
-              className={`bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 text-white font-semibold rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg ${boardSize === 'large' ? 'px-8 py-3 text-base md:text-lg' : 'px-5 py-2.5 text-sm md:text-base'}`}
+              className={`bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 text-white font-semibold rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg ${boardSize === 'large' ? 'px-6 py-2 text-sm md:text-base' : 'px-5 py-2.5 text-sm md:text-base'}`}
             >
               {t('restart')}
             </button>
@@ -513,30 +516,30 @@ function App() {
           <div className="flex flex-col items-center gap-1.5">
             <button
               onPointerDown={(e) => { e.preventDefault(); handleDPad('UP'); }}
-              className={`${boardSize === 'large' ? 'w-20 h-20 text-3xl' : 'w-14 h-14 text-xl'} bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none`}
+              className={`${boardSize === 'large' ? 'w-16 h-16 text-2xl' : 'w-14 h-14 text-xl'} bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none`}
             >
               ▲
             </button>
             <div className="flex gap-1.5">
               <button
                 onPointerDown={(e) => { e.preventDefault(); handleDPad('LEFT'); }}
-                className={`${boardSize === 'large' ? 'w-20 h-20 text-3xl' : 'w-14 h-14 text-xl'} bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none`}
+                className={`${boardSize === 'large' ? 'w-16 h-16 text-2xl' : 'w-14 h-14 text-xl'} bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none`}
               >
                 ◀
               </button>
-              <div className={`${boardSize === 'large' ? 'w-20 h-20' : 'w-14 h-14'} rounded-xl bg-gray-800/40 border border-gray-700/30 flex items-center justify-center text-gray-600 text-xs`}>
+              <div className={`${boardSize === 'large' ? 'w-16 h-16' : 'w-14 h-14'} rounded-xl bg-gray-800/40 border border-gray-700/30 flex items-center justify-center text-gray-600 text-xs`}>
                 ●
               </div>
               <button
                 onPointerDown={(e) => { e.preventDefault(); handleDPad('RIGHT'); }}
-                className={`${boardSize === 'large' ? 'w-20 h-20 text-3xl' : 'w-14 h-14 text-xl'} bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none`}
+                className={`${boardSize === 'large' ? 'w-16 h-16 text-2xl' : 'w-14 h-14 text-xl'} bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none`}
               >
                 ▶
               </button>
             </div>
             <button
               onPointerDown={(e) => { e.preventDefault(); handleDPad('DOWN'); }}
-              className={`${boardSize === 'large' ? 'w-20 h-20 text-3xl' : 'w-14 h-14 text-xl'} bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none`}
+              className={`${boardSize === 'large' ? 'w-16 h-16 text-2xl' : 'w-14 h-14 text-xl'} bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none`}
             >
               ▼
             </button>
