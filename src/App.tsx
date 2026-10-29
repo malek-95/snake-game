@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { useSnakeGame } from './hooks/useSnakeGame';
 import { useTranslation } from './i18n/useTranslation';
 import type { Direction, Difficulty, BoardSize } from './types/game.types';
@@ -37,11 +37,9 @@ function App() {
   const [boardSize, setBoardSize] = useState<BoardSize>('medium');
   const [showSettings, setShowSettings] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [boardDimensions, setBoardDimensions] = useState({ width: 0, height: 0 });
   const { language, setLanguage, t } = useTranslation();
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const boardRef = useRef<HTMLDivElement>(null);
 
   // Keyboard controls
   useEffect(() => {
@@ -146,27 +144,6 @@ function App() {
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
-
-  // Track board dimensions for performance
-  useEffect(() => {
-    if (!boardRef.current) return;
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        setBoardDimensions({ width, height });
-      }
-    });
-
-    resizeObserver.observe(boardRef.current);
-    return () => resizeObserver.disconnect();
-  }, []);
-
-  // Calculate cell size once
-  const cellSize = useMemo(() => {
-    if (boardDimensions.width === 0) return 0;
-    return boardDimensions.width / gridSize;
-  }, [boardDimensions.width, gridSize]);
 
   // Handle language change
   const handleLanguageChange = (lang: 'fr' | 'en') => {
@@ -333,8 +310,7 @@ function App() {
 
       {/* Game Board */}
       <div
-        ref={boardRef}
-        className={`relative ${boardSizeClasses[boardSize]} ${boardSize === 'large' ? 'aspect-square w-full max-w-[min(100vw,100vh-12rem)]' : 'aspect-square'} bg-gray-900/80 ${boardSize === 'large' ? 'rounded-none' : 'rounded-2xl'} border-2 overflow-hidden transition-all duration-300 ${
+        className={`relative ${boardSizeClasses[boardSize]} ${boardSize === 'large' ? 'aspect-square w-full h-full max-h-[calc(100vh-16rem)]' : 'aspect-square'} bg-gray-900/80 ${boardSize === 'large' ? 'rounded-none' : 'rounded-2xl'} border-2 overflow-hidden transition-all duration-300 ${
           gameMode === 'levels'
             ? 'border-purple-500/60 shadow-2xl shadow-purple-900/30'
             : wrapAround
@@ -371,13 +347,13 @@ function App() {
               key={index}
               className={`absolute rounded-md ${isHead ? 'z-20' : 'z-10'} ${invincible ? 'animate-pulse' : ''}`}
               style={{
-                transform: `translate(${segment.x * cellSize + 1}px, ${segment.y * cellSize + 1}px)`,
-                width: `${cellSize - 2}px`,
-                height: `${cellSize - 2}px`,
+                left: `calc(${segment.x} * 100% / ${gridSize} + 1px)`,
+                top: `calc(${segment.y} * 100% / ${gridSize} + 1px)`,
+                width: `calc(100% / ${gridSize} - 2px)`,
+                height: `calc(100% / ${gridSize} - 2px)`,
                 backgroundColor: isHead ? '#4ade80' : '#22c55e',
                 opacity,
                 boxShadow: isHead ? '0 0 12px rgba(74, 222, 128, 0.5)' : 'none',
-                willChange: 'transform',
               }}
             >
               {isHead && (
@@ -393,10 +369,10 @@ function App() {
         <div
           className="absolute z-10"
           style={{
-            transform: `translate(${food.x * cellSize}px, ${food.y * cellSize}px)`,
-            width: `${cellSize}px`,
-            height: `${cellSize}px`,
-            willChange: 'transform',
+            left: `calc(${food.x} * 100% / ${gridSize})`,
+            top: `calc(${food.y} * 100% / ${gridSize})`,
+            width: `calc(100% / ${gridSize})`,
+            height: `calc(100% / ${gridSize})`,
           }}
         >
           <div className="w-full h-full flex items-center justify-center animate-pulse">
@@ -410,9 +386,10 @@ function App() {
             key={`obs-${index}`}
             className="absolute rounded-sm bg-gradient-to-br from-gray-500 to-gray-700 border border-gray-400/30 shadow-inner"
             style={{
-              transform: `translate(${obs.x * cellSize + 1}px, ${obs.y * cellSize + 1}px)`,
-              width: `${cellSize - 2}px`,
-              height: `${cellSize - 2}px`,
+              left: `calc(${obs.x} * 100% / ${gridSize} + 1px)`,
+              top: `calc(${obs.y} * 100% / ${gridSize} + 1px)`,
+              width: `calc(100% / ${gridSize} - 2px)`,
+              height: `calc(100% / ${gridSize} - 2px)`,
             }}
           >
             <div className="w-full h-full flex items-center justify-center text-[8px] md:text-[10px] opacity-60">
