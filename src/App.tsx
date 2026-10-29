@@ -146,21 +146,21 @@ function App() {
 
   // Board size classes
   const boardSizeClasses: Record<BoardSize, string> = {
-    small: 'w-full max-w-[60vw] sm:max-w-[300px]',
-    medium: 'w-full max-w-[80vw] sm:max-w-md',
-    large: 'w-full max-w-[95vw] sm:max-w-lg',
+    small: 'w-full max-w-[80vw] sm:max-w-md',
+    medium: 'w-full max-w-[90vw] sm:max-w-lg',
+    large: 'w-screen h-screen max-w-none max-h-none',
   };
 
 
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-900 flex flex-col items-center p-3 md:p-4 pb-8 select-none">
+    <div ref={containerRef} className={`min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-900 flex flex-col items-center select-none ${boardSize === 'large' ? 'p-0' : 'p-3 md:p-4 pb-8'}`}>
       {/* Main content wrapper */}
-      <div className="w-full flex flex-col items-center justify-center flex-grow py-4">
+      <div className={`w-full flex flex-col items-center justify-center flex-grow ${boardSize === 'large' ? 'py-0' : 'py-4'}`}>
       {/* Header */}
-      <div className="w-full max-w-[90vw] sm:max-w-md md:max-w-lg mb-3 md:mb-4">
+      <div className={`w-full mb-3 md:mb-4 ${boardSize === 'large' ? 'max-w-full px-4' : 'max-w-[90vw] sm:max-w-md md:max-w-lg'}`}>
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-2xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400">
+          <h1 className={`font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 ${boardSize === 'large' ? 'text-3xl md:text-5xl' : 'text-2xl md:text-4xl'}`}>
             🐍 Snake
           </h1>
           <button
@@ -173,32 +173,32 @@ function App() {
         </div>
 
         {/* Score Board */}
-        <div className="flex justify-between items-center bg-gray-800/60 backdrop-blur-sm rounded-2xl px-2 sm:px-4 py-2 sm:py-3 border border-gray-700/50 shadow-lg">
+        <div className={`flex justify-between items-center bg-gray-800/60 backdrop-blur-sm rounded-2xl border border-gray-700/50 shadow-lg ${boardSize === 'large' ? 'px-6 py-4' : 'px-2 sm:px-4 py-2 sm:py-3'}`}>
           <div className="text-center flex-1">
-            <p className="text-[9px] sm:text-xs text-gray-400 uppercase tracking-widest font-medium">Score</p>
-            <p className="text-lg sm:text-2xl font-bold text-white tabular-nums">{score}</p>
+            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-xs sm:text-sm' : 'text-[9px] sm:text-xs'}`}>Score</p>
+            <p className={`font-bold text-white tabular-nums ${boardSize === 'large' ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-2xl'}`}>{score}</p>
           </div>
-          <div className="w-px h-8 bg-gray-700" />
+          <div className={`bg-gray-700 ${boardSize === 'large' ? 'w-px h-10' : 'w-px h-8'}`} />
           <div className="text-center flex-1">
-            <p className="text-[10px] md:text-xs text-gray-400 uppercase tracking-widest font-medium">🏆 Record</p>
-            <p className="text-xl md:text-2xl font-bold text-yellow-400 tabular-nums">{highScore}</p>
+            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-xs sm:text-sm' : 'text-[10px] md:text-xs'}`}>🏆 Record</p>
+            <p className={`font-bold text-yellow-400 tabular-nums ${boardSize === 'large' ? 'text-2xl sm:text-3xl' : 'text-xl md:text-2xl'}`}>{highScore}</p>
           </div>
-          <div className="w-px h-8 bg-gray-700" />
+          <div className={`bg-gray-700 ${boardSize === 'large' ? 'w-px h-10' : 'w-px h-8'}`} />
           <div className="text-center flex-1">
-            <p className="text-[10px] md:text-xs text-gray-400 uppercase tracking-widest font-medium">Bonus</p>
-            <p className={`text-lg md:text-xl font-bold tabular-nums ${multiplier > 1 ? 'text-orange-400' : 'text-gray-500'}`}>
+            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-xs sm:text-sm' : 'text-[10px] md:text-xs'}`}>Bonus</p>
+            <p className={`font-bold tabular-nums ${multiplier > 1 ? 'text-orange-400' : 'text-gray-500'} ${boardSize === 'large' ? 'text-2xl sm:text-3xl' : 'text-lg md:text-xl'}`}>
               x{multiplier}
             </p>
           </div>
-          <div className="w-px h-8 bg-gray-700" />
+          <div className={`bg-gray-700 ${boardSize === 'large' ? 'w-px h-10' : 'w-px h-8'}`} />
           <div className="text-center flex-1">
-            <p className="text-[10px] md:text-xs text-gray-400 uppercase tracking-widest font-medium">Pommes</p>
-            <p className="text-lg md:text-xl font-bold text-red-400 tabular-nums">{applesEaten}</p>
+            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-xs sm:text-sm' : 'text-[10px] md:text-xs'}`}>Pommes</p>
+            <p className={`font-bold text-red-400 tabular-nums ${boardSize === 'large' ? 'text-2xl sm:text-3xl' : 'text-lg md:text-xl'}`}>{applesEaten}</p>
           </div>
-          <div className="w-px h-8 bg-gray-700" />
+          <div className={`bg-gray-700 ${boardSize === 'large' ? 'w-px h-10' : 'w-px h-8'}`} />
           <div className="text-center flex-1">
-            <p className="text-[10px] md:text-xs text-gray-400 uppercase tracking-widest font-medium">Vies</p>
-            <p className="text-lg md:text-xl font-bold">
+            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-xs sm:text-sm' : 'text-[10px] md:text-xs'}`}>Vies</p>
+            <p className={`font-bold ${boardSize === 'large' ? 'text-2xl sm:text-3xl' : 'text-lg md:text-xl'}`}>
               {Array.from({ length: lives }).map((_, i) => (
                 <span key={i} className="text-red-500">❤️</span>
               ))}
@@ -233,7 +233,7 @@ function App() {
 
       {/* Game Board */}
       <div
-        className={`relative ${boardSizeClasses[boardSize]} aspect-square bg-gray-900/80 rounded-2xl border-2 overflow-hidden transition-all duration-300 ${
+        className={`relative ${boardSizeClasses[boardSize]} ${boardSize === 'large' ? 'flex-1 min-h-0' : 'aspect-square'} bg-gray-900/80 ${boardSize === 'large' ? 'rounded-none' : 'rounded-2xl'} border-2 overflow-hidden transition-all duration-300 ${
           gameMode === 'levels'
             ? 'border-purple-500/60 shadow-2xl shadow-purple-900/30'
             : wrapAround
@@ -392,36 +392,36 @@ function App() {
 
         {/* Idle Overlay */}
         {gameState === 'idle' && (
-          <div className="absolute inset-0 bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center z-30 rounded-2xl">
-            <div className="text-5xl md:text-6xl mb-4 animate-bounce">🐍</div>
-            <h2 className="text-xl md:text-2xl font-bold text-white mb-2">Jeu du Serpent</h2>
-            <p className="text-gray-300 text-xs md:text-sm mb-2 text-center px-6 max-w-xs">
+          <div className={`absolute inset-0 bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center z-30 ${boardSize === 'large' ? '' : 'rounded-2xl'}`}>
+            <div className={`${boardSize === 'large' ? 'text-7xl md:text-8xl mb-6' : 'text-5xl md:text-6xl mb-4'} animate-bounce`}>🐍</div>
+            <h2 className={`${boardSize === 'large' ? 'text-3xl md:text-4xl mb-3' : 'text-xl md:text-2xl mb-2'} font-bold text-white`}>Jeu du Serpent</h2>
+            <p className={`text-gray-300 text-center px-6 max-w-xs ${boardSize === 'large' ? 'text-sm md:text-base mb-3' : 'text-xs md:text-sm mb-2'}`}>
               {gameMode === 'classic' 
                 ? 'Dirigez le serpent pour manger les pommes. Ne touchez pas les murs ni vous-même!'
                 : 'Traversez les niveaux avec des obstacles. Mangez assez de pommes pour avancer!'}
             </p>
-            <p className="text-gray-400 text-[10px] mb-6">
+            <p className={`text-gray-400 mb-6 ${boardSize === 'large' ? 'text-xs md:text-sm' : 'text-[10px]'}`}>
               Mode: {gameMode === 'classic' ? '🎮 Classique' : '🏆 Niveaux'}
             </p>
             <button
               onClick={startGame}
-              className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-green-500/25 hover:shadow-green-500/40 hover:scale-105 active:scale-95 transition-all duration-200 text-lg"
+              className={`bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-green-500/25 hover:shadow-green-500/40 hover:scale-105 active:scale-95 transition-all duration-200 ${boardSize === 'large' ? 'px-12 py-4 text-xl md:text-2xl' : 'px-8 py-3 text-lg'}`}
             >
               ▶ Jouer
             </button>
-            <p className="text-gray-500 text-[10px] mt-4">Appuyez sur Entrée ou Espace</p>
+            <p className={`text-gray-500 mt-4 ${boardSize === 'large' ? 'text-xs md:text-sm' : 'text-[10px]'}`}>Appuyez sur Entrée ou Espace</p>
           </div>
         )}
 
         {/* Paused Overlay */}
         {gameState === 'paused' && (
-          <div className="absolute inset-0 bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center z-30 rounded-2xl">
-            <div className="text-4xl md:text-5xl mb-4">⏸️</div>
-            <h2 className="text-xl md:text-2xl font-bold text-white mb-2">Pause</h2>
-            <p className="text-gray-400 text-sm mb-6">Score actuel: {score}</p>
+          <div className={`absolute inset-0 bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center z-30 ${boardSize === 'large' ? '' : 'rounded-2xl'}`}>
+            <div className={`${boardSize === 'large' ? 'text-6xl md:text-7xl mb-6' : 'text-4xl md:text-5xl mb-4'}`}>⏸️</div>
+            <h2 className={`${boardSize === 'large' ? 'text-3xl md:text-4xl mb-3' : 'text-xl md:text-2xl mb-2'} font-bold text-white`}>Pause</h2>
+            <p className={`text-gray-400 mb-6 ${boardSize === 'large' ? 'text-lg md:text-xl' : 'text-sm'}`}>Score actuel: {score}</p>
             <button
               onClick={togglePause}
-              className="px-8 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-105 active:scale-95 transition-all duration-200"
+              className={`bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-105 active:scale-95 transition-all duration-200 ${boardSize === 'large' ? 'px-12 py-4 text-xl md:text-2xl' : 'px-8 py-3'}`}
             >
               ▶ Reprendre
             </button>
@@ -430,33 +430,33 @@ function App() {
 
         {/* Game Over Overlay */}
         {gameState === 'gameover' && (
-          <div className="absolute inset-0 bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center z-30 rounded-2xl">
-            <div className="text-4xl md:text-5xl mb-3">💀</div>
-            <h2 className="text-xl md:text-2xl font-bold text-red-400 mb-3">Game Over!</h2>
-            <div className="bg-gray-800/80 rounded-xl px-6 py-3 mb-4 border border-gray-700 space-y-2">
+          <div className={`absolute inset-0 bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center z-30 ${boardSize === 'large' ? '' : 'rounded-2xl'}`}>
+            <div className={`${boardSize === 'large' ? 'text-6xl md:text-7xl mb-4' : 'text-4xl md:text-5xl mb-3'}`}>💀</div>
+            <h2 className={`${boardSize === 'large' ? 'text-3xl md:text-4xl mb-4' : 'text-xl md:text-2xl mb-3'} font-bold text-red-400`}>Game Over!</h2>
+            <div className={`bg-gray-800/80 rounded-xl border border-gray-700 space-y-2 mb-4 ${boardSize === 'large' ? 'px-8 py-5' : 'px-6 py-3'}`}>
               <p className="text-white text-center">
-                Score: <span className="font-bold text-green-400 text-xl">{score}</span>
+                Score: <span className={`font-bold text-green-400 ${boardSize === 'large' ? 'text-3xl md:text-4xl' : 'text-xl'}`}>{score}</span>
               </p>
-              <p className="text-gray-300 text-center text-sm">
+              <p className={`text-gray-300 text-center ${boardSize === 'large' ? 'text-base md:text-lg' : 'text-sm'}`}>
                 🍎 {applesEaten} pommes mangées
               </p>
               {gameMode === 'levels' && (
-                <p className="text-purple-300 text-center text-sm">
+                <p className={`text-purple-300 text-center ${boardSize === 'large' ? 'text-base md:text-lg' : 'text-sm'}`}>
                   🏆 Niveau atteint: <span className="font-bold">{level}</span>
                 </p>
               )}
-              <p className="text-gray-300 text-center text-sm">
+              <p className={`text-gray-300 text-center ${boardSize === 'large' ? 'text-base md:text-lg' : 'text-sm'}`}>
                 ❤️ {bonusLivesGiven}/3 vies bonus utilisées
               </p>
               {score >= highScore && score > 0 && (
-                <p className="text-yellow-400 text-sm text-center mt-2 animate-pulse font-semibold">
+                <p className={`text-yellow-400 text-center mt-2 animate-pulse font-semibold ${boardSize === 'large' ? 'text-base md:text-lg' : 'text-sm'}`}>
                   🏆 Nouveau record!
                 </p>
               )}
             </div>
             <button
               onClick={startGame}
-              className="px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-green-500/25 hover:shadow-green-500/40 hover:scale-105 active:scale-95 transition-all duration-200"
+              className={`bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl shadow-lg shadow-green-500/25 hover:shadow-green-500/40 hover:scale-105 active:scale-95 transition-all duration-200 ${boardSize === 'large' ? 'px-12 py-4 text-xl md:text-2xl' : 'px-8 py-3'}`}
             >
               🔄 Rejouer
             </button>
@@ -465,13 +465,13 @@ function App() {
       </div>
 
       {/* Controls Section */}
-      <div className="w-full max-w-[90vw] sm:max-w-md md:max-w-lg mt-3 md:mt-4 space-y-3">
+      <div className={`w-full mt-3 md:mt-4 space-y-3 ${boardSize === 'large' ? 'max-w-full px-4' : 'max-w-[90vw] sm:max-w-md md:max-w-lg'}`}>
         {/* Action Buttons */}
         <div className="flex gap-3 justify-center">
           {gameState === 'playing' && (
             <button
               onClick={togglePause}
-              className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg text-sm md:text-base"
+              className={`bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg ${boardSize === 'large' ? 'px-8 py-3 text-base md:text-lg' : 'px-5 py-2.5 text-sm md:text-base'}`}
             >
               ⏸ Pause
             </button>
@@ -479,7 +479,7 @@ function App() {
           {(gameState === 'playing' || gameState === 'paused') && (
             <button
               onClick={startGame}
-              className="px-5 py-2.5 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 text-white font-semibold rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg text-sm md:text-base"
+              className={`bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 text-white font-semibold rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg ${boardSize === 'large' ? 'px-8 py-3 text-base md:text-lg' : 'px-5 py-2.5 text-sm md:text-base'}`}
             >
               🔄 Restart
             </button>
@@ -507,30 +507,30 @@ function App() {
           <div className="flex flex-col items-center gap-1.5">
             <button
               onPointerDown={(e) => { e.preventDefault(); handleDPad('UP'); }}
-              className="w-14 h-14 bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-xl text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none"
+              className={`${boardSize === 'large' ? 'w-20 h-20 text-3xl' : 'w-14 h-14 text-xl'} bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none`}
             >
               ▲
             </button>
             <div className="flex gap-1.5">
               <button
                 onPointerDown={(e) => { e.preventDefault(); handleDPad('LEFT'); }}
-                className="w-14 h-14 bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-xl text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none"
+                className={`${boardSize === 'large' ? 'w-20 h-20 text-3xl' : 'w-14 h-14 text-xl'} bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none`}
               >
                 ◀
               </button>
-              <div className="w-14 h-14 rounded-xl bg-gray-800/40 border border-gray-700/30 flex items-center justify-center text-gray-600 text-xs">
+              <div className={`${boardSize === 'large' ? 'w-20 h-20' : 'w-14 h-14'} rounded-xl bg-gray-800/40 border border-gray-700/30 flex items-center justify-center text-gray-600 text-xs`}>
                 ●
               </div>
               <button
                 onPointerDown={(e) => { e.preventDefault(); handleDPad('RIGHT'); }}
-                className="w-14 h-14 bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-xl text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none"
+                className={`${boardSize === 'large' ? 'w-20 h-20 text-3xl' : 'w-14 h-14 text-xl'} bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none`}
               >
                 ▶
               </button>
             </div>
             <button
               onPointerDown={(e) => { e.preventDefault(); handleDPad('DOWN'); }}
-              className="w-14 h-14 bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-xl text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none"
+              className={`${boardSize === 'large' ? 'w-20 h-20 text-3xl' : 'w-14 h-14 text-xl'} bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none`}
             >
               ▼
             </button>
