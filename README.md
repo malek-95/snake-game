@@ -121,25 +121,26 @@ Without it configured, the game works as before and the online buttons are hidde
 Needs Docker running.
 
 ```bash
-npx supabase start   # starts Postgres + Realtime and applies supabase/migrations
+npx supabase start   # starts Postgres, Realtime and the submit-score function; applies supabase/migrations
 npx supabase status -o env   # copy API_URL and ANON_KEY into .env.local (see .env.example)
 npm run dev
 ```
 
 With `.env.local` set, `npm test` also runs the live tests against your local backend
-(score storage and the security rules, room joining, messaging, "room full" and "not found").
+(server score checks, rate limit, security rules, room joining, messaging, "room full" and "not found").
 
 ### Cloud project
 
 1. Create a free project at supabase.com.
-2. Link and push the database schema:
+2. Link the project, deploy the score-checking function, then push the database schema:
    ```bash
    npx supabase login
    npx supabase link --project-ref <your-project-ref>
+   npx supabase functions deploy submit-score
    npx supabase db push
    ```
 3. Copy the **Project URL** and the **anon / publishable key** (Project Settings → API).
-   Both are public by design; the database rules only allow reading scores and adding valid ones.
+   Both are public by design; browsers can only read scores and play online, and new scores go through the server function.
    Never put the `service_role` / secret key in the app.
 4. For local use, put them in `.env.local`. For the hosted site, add them as **repository variables**
    (GitHub → Settings → Secrets and variables → Actions → Variables): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
@@ -147,14 +148,20 @@ With `.env.local` set, `npm test` also runs the live tests against your local ba
 ### How online play works
 
 - The host creates a room and shares its 4-letter code or invite link (`…/?room=ABCD`).
-- The host's browser runs the match and broadcasts each tick over Supabase Realtime; the guest sends its turns.
-- Online matches use a fixed 30×20 board so both players see the same game, and work with swipe and D-pad on phones.
+- **Rollback netcode** (`src/game/rollback.ts`): both players run the same deterministic game and only send their turns over Supabase Realtime. Your snake reacts instantly; when the other player's turn arrives late, the last few ticks are rewound and replayed. Game fingerprints are compared every 30 ticks as a safety net.
+- The host chooses whether snakes pass through walls; online matches use a fixed 30×20 board, with swipe and D-pad on phones. The current ping is shown in the corner.
+
+### World leaderboard
+
+- Scores go through the `submit-score` Edge Function (`supabase/functions/submit-score/`), never straight into the database.
+- It rejects scores that are impossible for the apples, mode and difficulty (the bonus multiplier and golden apples are taken into account), games that are too fast, and more than 5 scores per minute from one connection. Only a salted hash of the IP is stored for that.
+- The rules live in `validate.ts`; the app's tests check they match the game's settings.
 
 ### Known limits
 
-- Scores are reported by the browser, so a determined player could post a fake one.
-- The guest sees moves about half a round-trip later than the host.
-- The free Supabase tier allows 2 million realtime messages a month (a 3-minute match uses about 3,600).
+- The checks are plausibility checks: the single-player game runs in the browser, so a determined cheater could still invent a believable score. Full proof would need the server to replay each game.
+- When the other player's turn arrives late, their snake can snap a cell or two to catch up.
+- The free Supabase tier allows 2 million realtime messages a month (a 3-minute match uses about 3,600) and pauses projects after a week without activity.
 
 ## 🚢 Deployment
 
@@ -323,7 +330,7 @@ achievements, replay encoding, custom level validation and storage fallbacks.
 - [x] More game modes
 - [x] Skins and themes
 - [x] Leaderboards (on this device)
-- [ ] Online multiplayer and global leaderboards (need a backend)
+- [x] Online multiplayer and global leaderboards (Supabase backend)
 
 ### Potential Improvements
 - [x] Progressive Web App (PWA): installable, works offline

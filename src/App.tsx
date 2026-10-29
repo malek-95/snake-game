@@ -79,6 +79,11 @@ function App() {
   const [nameInput, setNameInput] = useState(leaderboard.playerName);
   const [saved, setSaved] = useState<{ gameId: number; rank: number; world: 'sending' | 'sent' | 'error' | null } | null>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  // When the current game started, so the world board can reject impossibly fast games.
+  const gameStartedAt = useRef(0);
+  useEffect(() => {
+    gameStartedAt.current = performance.now();
+  }, [gameId]);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Music only while the single-player screen is in front.
@@ -204,7 +209,7 @@ function App() {
     const id = gameId;
     setSaved({ gameId: id, rank, world: onlineEnabled ? 'sending' : null });
     if (onlineEnabled) {
-      submitWorldScore({ ...entry, mode: gameMode, difficulty })
+      submitWorldScore({ ...entry, mode: gameMode, difficulty, golden: game.goldenEaten, durationMs: performance.now() - gameStartedAt.current })
         .then(() => setSaved(s => (s?.gameId === id ? { ...s, world: 'sent' } : s)))
         .catch(() => setSaved(s => (s?.gameId === id ? { ...s, world: 'error' } : s)));
     }
