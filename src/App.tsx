@@ -1,8 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { useSnakeGame, Direction, Difficulty } from './hooks/useSnakeGame';
-import { translations, Language } from './i18n';
-
-type BoardSize = 'small' | 'medium' | 'large';
+import { useSnakeGame } from './hooks/useSnakeGame';
+import { useTranslation } from './i18n/useTranslation';
+import type { Direction, Difficulty, BoardSize } from './types/game.types';
 
 function App() {
   const {
@@ -38,14 +37,9 @@ function App() {
   const [boardSize, setBoardSize] = useState<BoardSize>('medium');
   const [showSettings, setShowSettings] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [language, setLanguage] = useState<Language>(() => {
-    const saved = localStorage.getItem('snake-language');
-    return (saved as Language) || 'fr';
-  });
+  const { language, setLanguage, t } = useTranslation();
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const t = (key: keyof typeof translations.fr) => translations[language][key];
 
   // Keyboard controls
   useEffect(() => {
@@ -152,9 +146,8 @@ function App() {
   }, []);
 
   // Handle language change
-  const handleLanguageChange = (lang: Language) => {
+  const handleLanguageChange = (lang: 'fr' | 'en') => {
     setLanguage(lang);
-    localStorage.setItem('snake-language', lang);
   };
 
   // Board size classes
