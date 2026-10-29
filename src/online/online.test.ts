@@ -31,18 +31,33 @@ const backend = describe.skipIf(!supabase);
 backend('world leaderboard (live backend)', () => {
   it('stores a score and returns it in the top 10, best first', async () => {
     const name = `t${Date.now() % 100000}`;
-    await submitWorldScore({ name, mode: 'golden', difficulty: 'hard', score: 999_000, apples: 42 });
-    await submitWorldScore({ name: `${name}b`, mode: 'golden', difficulty: 'hard', score: 998_000, apples: 41 });
+    // 42 apples on hard can reach at most 2280 points.
+    await submitWorldScore({ name, mode: 'golden', difficulty: 'hard', score: 2280, apples: 42, golden: 0, durationMs: 20_000 });
+    await submitWorldScore({ name: `${name}b`, mode: 'golden', difficulty: 'hard', score: 2260, apples: 42, golden: 0, durationMs: 20_000 });
+    const { data: mine } = await supabase!.from('scores').select('score, apples').eq('name', name);
+    expect(mine).toEqual([{ score: 2280, apples: 42 }]);
     const top = await fetchWorldTop('golden', 'hard');
-    const i = top.findIndex(r => r.name === name);
-    expect(i).toBeGreaterThanOrEqual(0);
-    expect(top[i]).toMatchObject({ score: 999_000, apples: 42 });
     expect(top.map(r => r.score)).toEqual([...top.map(r => r.score)].sort((a, b) => b - a));
   });
 
-  it('rejects impossible scores at the database', async () => {
-    await expect(submitWorldScore({ name: 'x', mode: 'classic', difficulty: 'easy', score: 5_000_000, apples: 1 })).rejects.toBeTruthy();
-    await expect(submitWorldScore({ name: 'x', mode: 'nope' as never, difficulty: 'easy', score: 10, apples: 1 })).rejects.toBeTruthy();
+  it('rejects impossible scores on the server', async () => {
+    const real = { name: 'x', mode: 'classic' as const, difficulty: 'easy' as const, golden: 0, durationMs: 10_000 };
+    await expect(submitWorldScore({ ...real, score: 5000, apples: 1 })).rejects.toBeTruthy();       // too many points for 1 apple
+    await expect(submitWorldScore({ ...real, score: 50, apples: 10, durationMs: 50 })).rejects.toBeTruthy(); // too fast
+    await expect(submitWorldScore({ ...real, mode: 'nope' as never, score: 10, apples: 2 })).rejects.toBeTruthy();
+  });
+
+  it('refuses scores written straight into the database', async () => {
+    const { error } = await supabase!.from('scores').insert({ name: 'cheat', mode: 'classic', difficulty: 'easy', score: 5, apples: 1 });
+    expect(error).toBeTruthy();
+  });
+
+  it('limits how many scores one connection can send per minute', async () => {
+    const results = [];
+    for (let n = 0; n < 6; n++) {
+      results.push(await submitWorldScore({ name: 'rate', mode: 'zen', difficulty: 'easy', score: 5, apples: 1, golden: 0, durationMs: 5000 }).then(() => 'ok', () => 'refused'));
+    }
+    expect(results).toContain('refused');
   });
 
   it('does not let anyone delete or change scores', async () => {

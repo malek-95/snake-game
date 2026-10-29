@@ -17,6 +17,10 @@ export interface WorldScore {
   score: number;
   apples: number;
   level?: number;
+  /** Golden apples eaten (golden mode). */
+  golden: number;
+  /** How long the game lasted; the server rejects impossibly fast games. */
+  durationMs: number;
 }
 
 /** Top 10 for one mode and difficulty, best first (earlier wins ties). */
@@ -34,16 +38,23 @@ export const fetchWorldTop = async (mode: GameMode, difficulty: Difficulty): Pro
   return data;
 };
 
-/** Sends a score to the world board. Throws when the server can't be reached or rejects it. */
+/**
+ * Sends a score to the world board through the submit-score server function, which checks it
+ * before saving. Throws when the server can't be reached or rejects it.
+ */
 export const submitWorldScore = async (s: WorldScore): Promise<void> => {
   if (!supabase) return;
-  const { error } = await supabase.from('scores').insert({
-    name: cleanName(s.name),
-    mode: s.mode,
-    difficulty: s.difficulty,
-    score: Math.round(s.score),
-    apples: Math.round(s.apples),
-    level: s.level ?? null,
+  const { error } = await supabase.functions.invoke('submit-score', {
+    body: {
+      name: cleanName(s.name),
+      mode: s.mode,
+      difficulty: s.difficulty,
+      score: Math.round(s.score),
+      apples: Math.round(s.apples),
+      golden: s.golden,
+      durationMs: Math.round(s.durationMs),
+      level: s.level ?? null,
+    },
   });
   if (error) throw error;
 };
