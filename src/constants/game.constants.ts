@@ -1,7 +1,11 @@
-import type { GameConfig, Difficulty } from '../types/game.types';
+import type { GameConfig, Difficulty, Grid } from '../types/game.types';
 
 // Grid configuration
 export const GRID_SIZE = 20;
+// Normal boards and levels mode (level layouts are hand-placed for 20x20).
+export const DEFAULT_GRID: Grid = { cols: GRID_SIZE, rows: GRID_SIZE };
+// Full-size board: cells aim for this size, so big screens get more cells instead of bigger ones.
+export const TARGET_CELL_PX = 28;
 
 // Speed settings (milliseconds per tick)
 export const SPEED_CONFIG: Record<Difficulty, number> = {
@@ -23,13 +27,6 @@ export const GAME_CONFIG: GameConfig = {
   speed: SPEED_CONFIG,
   scorePerApple: SCORE_CONFIG,
 };
-
-// Initial snake position
-export const INITIAL_SNAKE = [
-  { x: 10, y: 10 },
-  { x: 9, y: 10 },
-  { x: 8, y: 10 },
-];
 
 // Bonus thresholds
 export const BONUS_CONFIG = {
