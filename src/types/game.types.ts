@@ -89,6 +89,8 @@ export interface UseSnakeGameReturn extends GameStateData {
   timeLeft: number;
   /** Times the snake bit itself in zen mode (it loses its tail instead of dying). */
   tailCuts: number;
+  /** Current length of one game tick in ms (changes with level and survival speed). */
+  tickMs: number;
   /** Increments on every startGame, so listeners can tell a restart from a continuing game. */
   gameId: number;
   setCustomLevel: (obstacles: Position[]) => void;

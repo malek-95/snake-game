@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { VersusScreen } from './VersusScreen';
+import { OnlineVersus } from './OnlineVersus';
 import { onlineEnabled } from '../online/client';
 import { openRoom, makeRoomCode, normalizeCode, isValidCode, type Room, type RoomError } from '../online/room';
 import type { Skin, Theme } from '../features/look';
@@ -86,7 +86,7 @@ export const OnlineLobby = ({ difficulty, skin, theme, musicOn, t, initialCode, 
 
   if (status === 'playing' && room) {
     return (
-      <VersusScreen difficulty={difficulty} skin={skin} theme={theme} musicOn={musicOn} t={t} room={room} onExit={leave} onMatchWon={onMatchWon} />
+      <OnlineVersus room={room} difficulty={difficulty} skin={skin} theme={theme} musicOn={musicOn} t={t} onExit={leave} onMatchWon={onMatchWon} />
     );
   }
 
