@@ -3,3 +3,8 @@ node_modules/
 dist/
 build/
 *.log
+
+# Local environment (Supabase keys for development)
+.env
+.env.*.local
+*.local
