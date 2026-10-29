@@ -28,6 +28,7 @@ export const VersusScreen = ({ difficulty, skin, theme, musicOn, t, onExit, onMa
   const stateRef = useRef(state);
   const [phase, setPhase] = useState<VersusPhase>('ready');
   const [wrap, setWrap] = useState(false);
+  const [powerUps, setPowerUps] = useState(false);
   const tickMs = SPEED_CONFIG[difficulty];
 
   const update = useCallback((next: VersusState) => {
@@ -43,9 +44,9 @@ export const VersusScreen = ({ difficulty, skin, theme, musicOn, t, onExit, onMa
   const startRound = useCallback(() => {
     const s = stateRef.current;
     const matchOver = matchWinner(s) !== null;
-    update(newRound(matchOver || phase === 'ready' ? fit.preferredGrid : s.grid, matchOver ? [0, 0] : s.wins, undefined, wrap));
+    update(newRound(matchOver || phase === 'ready' ? fit.preferredGrid : s.grid, matchOver ? [0, 0] : s.wins, undefined, wrap, powerUps));
     setPhase('playing');
-  }, [phase, fit.preferredGrid, update, wrap]);
+  }, [phase, fit.preferredGrid, update, wrap, powerUps]);
 
   useEffect(() => {
     if (phase !== 'playing') return;
@@ -92,6 +93,8 @@ export const VersusScreen = ({ difficulty, skin, theme, musicOn, t, onExit, onMa
       t={t}
       wrap={wrap}
       onToggleWrap={() => setWrap(w => !w)}
+      powerUps={powerUps}
+      onTogglePowerUps={() => setPowerUps(p => !p)}
       onStart={startRound}
       onExit={onExit}
       onMatchWon={onMatchWon}

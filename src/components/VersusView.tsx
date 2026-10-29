@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Board } from './Board';
-import { matchWinner, WINS_NEEDED, type VersusState } from '../game/versus';
+import { matchWinner, WINS_NEEDED, POWER_ICONS, type VersusState } from '../game/versus';
 import { sound } from '../audio/sound';
 import { rivalSkin, type Skin, type Theme } from '../features/look';
 import type { useBoardFit } from '../hooks/useBoardFit';
@@ -30,6 +30,9 @@ interface Props {
   peerGone?: boolean;
   /** Snakes pass through walls this round. */
   wrap: boolean;
+  /** Power-ups on this round. */
+  powerUps: boolean;
+  onTogglePowerUps?: () => void;
   /** Who may change it (local players, online host); others just see the setting. */
   onToggleWrap?: () => void;
   /** Online: once the match is won, both players must ask for a rematch. */
@@ -56,7 +59,7 @@ export interface ReactionBubble {
 
 export const VersusView = ({
   state, ended, wins, phase, myIndex, fit, tickMs, skin, theme, musicOn, t,
-  roomCode, pingMs, peerGone, wrap, onToggleWrap, rematch, reactions, onStart, onExit, onMatchWon, onTurn,
+  roomCode, pingMs, peerGone, wrap, onToggleWrap, powerUps, onTogglePowerUps, rematch, reactions, onStart, onExit, onMatchWon, onTurn,
 }: Props) => {
   const skins = [skin, rivalSkin(skin)];
 
@@ -125,6 +128,8 @@ export const VersusView = ({
               ))}
               <span className="w-3 h-3 rounded-sm" style={{ background: skins[i].head, boxShadow: `0 0 8px ${skins[i].glow}` }} />
               <span className="text-white font-semibold text-sm hidden sm:inline">{names[i]}</span>
+              {(state.players[i].ghost ?? 0) > 0 && <span title="ghost">👻</span>}
+              {(state.players[i].frozen ?? 0) > 0 && <span title="frozen">❄️</span>}
               <span className="text-red-300 text-sm tabular-nums">🍎 {state.players[i].apples}</span>
               <span className="text-yellow-300 font-bold tabular-nums" aria-label={`${wins[i]}/${WINS_NEEDED}`}>
                 {'★'.repeat(wins[i])}<span className="text-gray-600">{'★'.repeat(WINS_NEEDED - wins[i])}</span>
@@ -142,8 +147,14 @@ export const VersusView = ({
         <Board
           grid={state.grid}
           theme={theme}
-          snakes={state.players.map((p, i) => ({ body: p.body, skin: skins[i], dead: !!ended && !p.alive }))}
+          snakes={state.players.map((p, i) => ({
+            body: p.body,
+            skin: skins[i],
+            dead: !!ended && !p.alive,
+            effect: (p.ghost ?? 0) > 0 ? 'ghost' as const : (p.frozen ?? 0) > 0 ? 'frozen' as const : undefined,
+          }))}
           food={state.food}
+          items={state.powerUp ? [{ pos: state.powerUp.pos, emoji: POWER_ICONS[state.powerUp.kind] }] : undefined}
           obstacles={[]}
           tickMs={tickMs}
           accentBorder={wrap}
@@ -163,17 +174,24 @@ export const VersusView = ({
                 <>
                   <h2 className="text-2xl md:text-3xl font-bold text-white">{phase === 'ready' ? (roomCode ? t('online') : t('versus')) : resultText}</h2>
                   <p className="text-gray-300 text-sm">{t('firstTo')}</p>
-                  {onToggleWrap ? (
-                    <button
-                      onClick={onToggleWrap}
-                      aria-pressed={wrap}
-                      className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${wrap ? 'bg-gradient-to-r from-purple-600 to-violet-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
-                    >
-                      {t('wrapAround')}: {wrap ? t('wrapAroundOn') : t('wrapAroundOff')}
-                    </button>
-                  ) : (
-                    <p className="text-sm text-gray-300">{t('wrapAround')}: {wrap ? t('wrapAroundOn') : t('wrapAroundOff')}</p>
-                  )}
+                  {/* Round options: whoever may change them gets buttons, the other player just sees them. */}
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {[
+                      { label: t('wrapAround'), on: wrap, toggle: onToggleWrap },
+                      { label: t('powerUps'), on: powerUps, toggle: onTogglePowerUps },
+                    ].map(o => o.toggle ? (
+                      <button
+                        key={o.label}
+                        onClick={o.toggle}
+                        aria-pressed={o.on}
+                        className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${o.on ? 'bg-gradient-to-r from-purple-600 to-violet-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}
+                      >
+                        {o.label}: {o.on ? t('wrapAroundOn') : t('wrapAroundOff')}
+                      </button>
+                    ) : (
+                      <span key={o.label} className="text-sm text-gray-300">{o.label}: {o.on ? t('wrapAroundOn') : t('wrapAroundOff')}</span>
+                    ))}
+                  </div>
                   {myIndex !== null ? (
                     <p className="text-sm" style={{ color: skins[myIndex].head }}>{t('you')}: {t('arrowsOrWasd')}</p>
                   ) : (
