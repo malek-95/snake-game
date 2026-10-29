@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { useSnakeGame } from './hooks/useSnakeGame';
 import { useTranslation } from './i18n/useTranslation';
 import { useBoardFit } from './hooks/useBoardFit';
+import { useInstallPrompt } from './hooks/useInstallPrompt';
 import { useAudioSettings, useGameSounds } from './hooks/useGameSounds';
 import { useLook, SKINS } from './features/look';
 import { useLeaderboard, boardKey, qualifies } from './features/leaderboard';
@@ -56,6 +57,7 @@ function App() {
   const look = useLook();
   const leaderboard = useLeaderboard();
   const customLevels = useCustomLevels();
+  const install = useInstallPrompt();
   const replays = useReplayRecorder(game);
   const achievements = useAchievements({
     mode: gameMode, difficulty, gameState, applesEaten, score, level, multiplier,
@@ -510,6 +512,7 @@ function App() {
           customLevelId={customLevel?.id}
           setCustomLevelId={setCustomLevelId}
           onOpenEditor={() => { setModal(null); setScreen('editor'); }}
+          install={install}
           onClose={() => setModal(null)}
         />
       )}
