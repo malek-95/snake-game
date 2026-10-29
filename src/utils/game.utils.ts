@@ -32,7 +32,8 @@ export const isSafePosition = (x: number, y: number, center: number): boolean =>
 export const getRandomPosition = (
   snake: Position[],
   obstacles: Position[] = [],
-  grid: Grid = DEFAULT_GRID
+  grid: Grid = DEFAULT_GRID,
+  rng: () => number = Math.random,
 ): Position => {
   const taken = new Set([...snake, ...obstacles].map(p => `${p.x},${p.y}`));
   const free: Position[] = [];
@@ -43,7 +44,7 @@ export const getRandomPosition = (
   }
   // shortcut: a completely full board puts food off-grid (unreachable); add a "you win" state if that ever matters.
   if (free.length === 0) return { x: -1, y: -1 };
-  return free[Math.floor(Math.random() * free.length)];
+  return free[Math.floor(rng() * free.length)];
 };
 
 /**
@@ -236,4 +237,47 @@ export const findSafeSpawnPosition = (
   }
   
   return null;
+};
+
+/** Seeded random numbers (mulberry32): the same seed always gives the same sequence. */
+export const seededRandom = (seed: number) => {
+  let s = seed | 0;
+  return () => {
+    s = (s + 0x6d2b79f5) | 0;
+    let r = Math.imul(s ^ (s >>> 15), 1 | s);
+    r = (r + Math.imul(r ^ (r >>> 7), 61 | r)) ^ r;
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+/** Today's date in UTC (YYYY-MM-DD): the daily challenge changes at midnight UTC for everyone. */
+export const todayKey = (now = new Date()) => now.toISOString().slice(0, 10);
+
+const hashString = (text: string) => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193);
+  return h >>> 0;
+};
+
+/**
+ * The daily challenge for a date: everyone gets the same asteroid layout and, through `seed`,
+ * the same apple positions. Walls stay out of the snake's start zone.
+ */
+export const dailyChallenge = (day: string) => {
+  const seed = hashString(`snake-daily-${day}`);
+  const rng = seededRandom(seed);
+  const center = Math.floor(GRID_SIZE / 2);
+  const walls = new Map<string, Position>();
+  const clusters = 5 + Math.floor(rng() * 3);
+  for (let c = 0; c < clusters; c++) {
+    let x = Math.floor(rng() * GRID_SIZE);
+    let y = Math.floor(rng() * GRID_SIZE);
+    const size = 2 + Math.floor(rng() * 4);
+    for (let i = 0; i < size; i++) {
+      if (x >= 0 && x < GRID_SIZE && y >= 0 && y < GRID_SIZE && isSafePosition(x, y, center)) walls.set(`${x},${y}`, { x, y });
+      if (rng() < 0.5) x += rng() < 0.5 ? 1 : -1;
+      else y += rng() < 0.5 ? 1 : -1;
+    }
+  }
+  return { seed, obstacles: [...walls.values()] };
 };

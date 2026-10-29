@@ -61,5 +61,5 @@ export const MAX_DIRECTION_QUEUE = 2;
 export const DIRECTION_DEBOUNCE = 50;
 
 // Single-player modes, in menu order (2 players is a separate screen).
-export const GAME_MODES: GameMode[] = ['classic', 'levels', 'timeAttack', 'survival', 'zen', 'golden', 'custom'];
+export const GAME_MODES: GameMode[] = ['classic', 'levels', 'timeAttack', 'survival', 'zen', 'golden', 'custom', 'daily'];
 export const DIFFICULTIES: Difficulty[] = ['easy', 'medium', 'hard'];

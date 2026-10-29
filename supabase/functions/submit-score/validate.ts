@@ -1,7 +1,7 @@
 // World leaderboard score rules. Plain TypeScript with no imports, so it runs both in the
 // Edge Function (Deno) and in the app's tests (which also check it matches the game's settings).
 
-export const MODES = ['classic', 'levels', 'timeAttack', 'survival', 'zen', 'golden', 'custom'] as const;
+export const MODES = ['classic', 'levels', 'timeAttack', 'survival', 'zen', 'golden', 'custom', 'daily'] as const;
 export const DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
 type Mode = (typeof MODES)[number];
 type Difficulty = (typeof DIFFICULTIES)[number];

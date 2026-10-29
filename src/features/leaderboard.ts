@@ -16,7 +16,9 @@ export const MAX_ENTRIES = 10;
 const BOARDS_KEY = 'snake-leaderboard';
 const NAME_KEY = 'snake-player-name';
 
-export const boardKey = (mode: GameMode, difficulty: Difficulty) => `${mode}:${difficulty}`;
+// The daily challenge gets a fresh board every day.
+export const boardKey = (mode: GameMode, difficulty: Difficulty) =>
+  mode === 'daily' ? `daily:${new Date().toISOString().slice(0, 10)}` : `${mode}:${difficulty}`;
 
 /** Would this score make the top 10? */
 export const qualifies = (entries: ScoreEntry[], score: number) =>
