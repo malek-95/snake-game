@@ -1,5 +1,7 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import { useSnakeGame, Direction, Difficulty } from './hooks/useSnakeGame';
+
+type BoardSize = 'small' | 'medium' | 'large';
 
 function App() {
   const {
@@ -32,7 +34,11 @@ function App() {
     changeGameMode,
   } = useSnakeGame();
 
+  const [boardSize, setBoardSize] = useState<BoardSize>('medium');
+  const [showSettings, setShowSettings] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Keyboard controls
   useEffect(() => {
@@ -118,21 +124,53 @@ function App() {
     }
   }, [gameState, changeDirection]);
 
-  const difficulties: { key: Difficulty; label: string; emoji: string; color: string }[] = [
-    { key: 'easy', label: 'Facile', emoji: '🟢', color: 'from-green-500 to-green-600' },
-    { key: 'medium', label: 'Moyen', emoji: '🟡', color: 'from-yellow-500 to-orange-500' },
-    { key: 'hard', label: 'Difficile', emoji: '🔴', color: 'from-red-500 to-red-600' },
-  ];
+  // Fullscreen toggle
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  }, []);
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  // Board size classes
+  const boardSizeClasses: Record<BoardSize, string> = {
+    small: 'w-full max-w-[60vw] sm:max-w-[300px]',
+    medium: 'w-full max-w-[80vw] sm:max-w-md',
+    large: 'w-full max-w-[95vw] sm:max-w-lg',
+  };
+
+
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-900 flex flex-col items-center p-3 md:p-4 pb-8 select-none">
+    <div ref={containerRef} className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-900 flex flex-col items-center p-3 md:p-4 pb-8 select-none">
       {/* Main content wrapper */}
       <div className="w-full flex flex-col items-center justify-center flex-grow py-4">
       {/* Header */}
       <div className="w-full max-w-[90vw] sm:max-w-md md:max-w-lg mb-3 md:mb-4">
-        <h1 className="text-2xl md:text-4xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 mb-3">
-          🐍 Snake Game
-        </h1>
+        <div className="flex items-center justify-between mb-3">
+          <h1 className="text-2xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400">
+            🐍 Snake
+          </h1>
+          <button
+            onClick={() => setShowSettings(true)}
+            className="p-2 bg-gray-700/60 hover:bg-gray-600 rounded-xl transition-colors border border-gray-600/50"
+            title="Paramètres"
+          >
+            <span className="text-xl">⚙️</span>
+          </button>
+        </div>
 
         {/* Score Board */}
         <div className="flex justify-between items-center bg-gray-800/60 backdrop-blur-sm rounded-2xl px-2 sm:px-4 py-2 sm:py-3 border border-gray-700/50 shadow-lg">
@@ -195,7 +233,7 @@ function App() {
 
       {/* Game Board */}
       <div
-        className={`relative w-full max-w-[90vw] sm:max-w-md md:max-w-lg aspect-square bg-gray-900/80 rounded-2xl border-2 overflow-hidden transition-all duration-300 ${
+        className={`relative ${boardSizeClasses[boardSize]} aspect-square bg-gray-900/80 rounded-2xl border-2 overflow-hidden transition-all duration-300 ${
           gameMode === 'levels'
             ? 'border-purple-500/60 shadow-2xl shadow-purple-900/30'
             : wrapAround
@@ -227,13 +265,13 @@ function App() {
         {bonusEvent && gameState === 'playing' && (
           <div
             key={bonusEvent.id}
-            className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none"
+            className="absolute top-2 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
           >
-            <div className="bg-gradient-to-r from-orange-500/90 to-yellow-500/90 backdrop-blur-sm px-6 py-3 rounded-2xl shadow-2xl shadow-orange-500/50 border border-yellow-300/50 animate-bonus-pop">
+            <div className="bg-gradient-to-r from-orange-500/90 to-yellow-500/90 backdrop-blur-sm px-4 py-2 rounded-xl shadow-2xl shadow-orange-500/50 border border-yellow-300/50 animate-bonus-pop">
               <div className="text-center">
-                <p className="text-white font-bold text-lg md:text-xl">🎉 BONUS!</p>
-                <p className="text-yellow-100 text-sm md:text-base font-semibold">
-                  x{bonusEvent.multiplier} points • {bonusEvent.applesCount} pommes 🍎
+                <p className="text-white font-bold text-sm md:text-base">🎉 BONUS!</p>
+                <p className="text-yellow-100 text-xs md:text-sm font-semibold">
+                  x{bonusEvent.multiplier} • {bonusEvent.applesCount} 🍎
                 </p>
               </div>
             </div>
@@ -244,13 +282,13 @@ function App() {
         {lifeLostEvent && gameState === 'playing' && (
           <div
             key={lifeLostEvent.id}
-            className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none"
+            className="absolute top-2 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
           >
-            <div className="bg-gradient-to-r from-red-600/90 to-rose-600/90 backdrop-blur-sm px-6 py-3 rounded-2xl shadow-2xl shadow-red-500/50 border border-red-300/50 animate-life-lost-pop">
+            <div className="bg-gradient-to-r from-red-600/90 to-rose-600/90 backdrop-blur-sm px-4 py-2 rounded-xl shadow-2xl shadow-red-500/50 border border-red-300/50 animate-life-lost-pop">
               <div className="text-center">
-                <p className="text-white font-bold text-lg md:text-xl">💔 Vie perdue!</p>
-                <p className="text-red-100 text-sm md:text-base font-semibold">
-                  {lifeLostEvent.livesRemaining} vie{lifeLostEvent.livesRemaining > 1 ? 's' : ''} restante{lifeLostEvent.livesRemaining > 1 ? 's' : ''}
+                <p className="text-white font-bold text-sm md:text-base">💔 Vie perdue!</p>
+                <p className="text-red-100 text-xs md:text-sm font-semibold">
+                  {lifeLostEvent.livesRemaining} restante{lifeLostEvent.livesRemaining > 1 ? 's' : ''}
                 </p>
               </div>
             </div>
@@ -261,13 +299,13 @@ function App() {
         {lifeGainedEvent && gameState === 'playing' && (
           <div
             key={lifeGainedEvent.id}
-            className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none"
+            className="absolute top-2 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
           >
-            <div className="bg-gradient-to-r from-green-500/90 to-emerald-500/90 backdrop-blur-sm px-6 py-3 rounded-2xl shadow-2xl shadow-green-500/50 border border-green-300/50 animate-life-gained-pop">
+            <div className="bg-gradient-to-r from-green-500/90 to-emerald-500/90 backdrop-blur-sm px-4 py-2 rounded-xl shadow-2xl shadow-green-500/50 border border-green-300/50 animate-life-gained-pop">
               <div className="text-center">
-                <p className="text-white font-bold text-lg md:text-xl">💚 +1 Vie!</p>
-                <p className="text-green-100 text-sm md:text-base font-semibold">
-                  {lifeGainedEvent.lives} vie{lifeGainedEvent.lives > 1 ? 's' : ''} totale{lifeGainedEvent.lives > 1 ? 's' : ''}
+                <p className="text-white font-bold text-sm md:text-base">💚 +1 Vie!</p>
+                <p className="text-green-100 text-xs md:text-sm font-semibold">
+                  {lifeGainedEvent.lives} totale{lifeGainedEvent.lives > 1 ? 's' : ''}
                 </p>
               </div>
             </div>
@@ -278,13 +316,13 @@ function App() {
         {levelCompleteEvent && gameState === 'playing' && (
           <div
             key={levelCompleteEvent.id}
-            className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none"
+            className="absolute top-2 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
           >
-            <div className="bg-gradient-to-r from-purple-600/90 to-pink-600/90 backdrop-blur-sm px-6 py-4 rounded-2xl shadow-2xl shadow-purple-500/50 border border-purple-300/50 animate-level-complete-pop">
+            <div className="bg-gradient-to-r from-purple-600/90 to-pink-600/90 backdrop-blur-sm px-4 py-2 rounded-xl shadow-2xl shadow-purple-500/50 border border-purple-300/50 animate-level-complete-pop">
               <div className="text-center">
-                <p className="text-white font-bold text-xl md:text-2xl">🎊 Niveau {levelCompleteEvent.level} terminé!</p>
-                <p className="text-purple-100 text-sm md:text-base font-semibold mt-1">
-                  Passage au niveau {levelCompleteEvent.level + 1}...
+                <p className="text-white font-bold text-sm md:text-base">🎊 Niveau {levelCompleteEvent.level}!</p>
+                <p className="text-purple-100 text-xs md:text-sm font-semibold">
+                  Niveau {levelCompleteEvent.level + 1}...
                 </p>
               </div>
             </div>
@@ -448,32 +486,6 @@ function App() {
           )}
         </div>
 
-        {/* Game Mode Selector */}
-        <div className="flex gap-2 justify-center">
-          <button
-            onClick={() => changeGameMode('classic')}
-            disabled={gameState === 'playing' || gameState === 'paused'}
-            className={`px-3 md:px-4 py-2 text-xs md:text-sm font-bold text-white rounded-xl transition-all duration-200 ${
-              gameMode === 'classic'
-                ? 'bg-gradient-to-r from-blue-500 to-cyan-500 ring-2 ring-white/30 scale-105 shadow-lg'
-                : 'bg-gray-700/80 hover:bg-gray-600 opacity-60 hover:opacity-80'
-            } ${(gameState === 'playing' || gameState === 'paused') ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''}`}
-          >
-            🎮 Classique
-          </button>
-          <button
-            onClick={() => changeGameMode('levels')}
-            disabled={gameState === 'playing' || gameState === 'paused'}
-            className={`px-3 md:px-4 py-2 text-xs md:text-sm font-bold text-white rounded-xl transition-all duration-200 ${
-              gameMode === 'levels'
-                ? 'bg-gradient-to-r from-purple-500 to-pink-500 ring-2 ring-white/30 scale-105 shadow-lg'
-                : 'bg-gray-700/80 hover:bg-gray-600 opacity-60 hover:opacity-80'
-            } ${(gameState === 'playing' || gameState === 'paused') ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''}`}
-          >
-            🏆 Niveaux
-          </button>
-        </div>
-
         {/* Level Progress (Levels Mode) */}
         {gameMode === 'levels' && (
           <div className="bg-gray-800/60 backdrop-blur-sm rounded-xl px-4 py-2 border border-purple-700/50">
@@ -489,40 +501,6 @@ function App() {
             </div>
           </div>
         )}
-
-        {/* Difficulty Selector */}
-        <div className="flex gap-2 justify-center">
-          {difficulties.map(d => (
-            <button
-              key={d.key}
-              onClick={() => changeDifficulty(d.key)}
-              disabled={gameState === 'playing' || gameState === 'paused'}
-              className={`px-3 md:px-4 py-2 text-xs md:text-sm font-bold text-white rounded-xl transition-all duration-200 ${
-                difficulty === d.key
-                  ? `bg-gradient-to-r ${d.color} ring-2 ring-white/30 scale-105 shadow-lg`
-                  : 'bg-gray-700/80 hover:bg-gray-600 opacity-60 hover:opacity-80'
-              } ${(gameState === 'playing' || gameState === 'paused') ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''}`}
-            >
-              {d.emoji} {d.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Wrap Around Mode Toggle */}
-        <div className="flex justify-center">
-          <button
-            onClick={toggleWrapAround}
-            disabled={gameState === 'playing' || gameState === 'paused' || gameMode === 'levels'}
-            className={`px-4 py-2 text-xs md:text-sm font-bold rounded-xl transition-all duration-200 border ${
-              wrapAround
-                ? 'bg-gradient-to-r from-purple-600 to-violet-600 text-white border-purple-400/50 shadow-lg shadow-purple-500/20 ring-2 ring-purple-400/30'
-                : 'bg-gray-700/60 text-gray-400 border-gray-600/50 hover:bg-gray-600 hover:text-gray-300'
-            } ${(gameState === 'playing' || gameState === 'paused' || gameMode === 'levels') ? 'opacity-40 cursor-not-allowed pointer-events-none' : ''}`}
-          >
-            🌀 Traversée des murs {wrapAround ? 'ON' : 'OFF'}
-            {gameMode === 'levels' && <span className="ml-1 text-[10px] opacity-70">(désactivé)</span>}
-          </button>
-        </div>
 
         {/* Mobile D-Pad Controls */}
         <div className="md:hidden mt-3">
@@ -567,6 +545,135 @@ function App() {
         </div>
       </div>
       </div>
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-800 rounded-2xl border border-gray-700 shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-gray-700">
+              <h2 className="text-xl font-bold text-white">⚙️ Paramètres</h2>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <span className="text-xl">✕</span>
+              </button>
+            </div>
+            
+            <div className="p-4 space-y-5">
+              {/* Board Size */}
+              <div>
+                <label className="text-sm font-semibold text-gray-300 mb-2 block">📐 Taille du plateau</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { key: 'small' as BoardSize, label: 'Petit', emoji: '🔹' },
+                    { key: 'medium' as BoardSize, label: 'Moyen', emoji: '🔷' },
+                    { key: 'large' as BoardSize, label: 'Grand', emoji: '🟦' },
+                  ]).map(size => (
+                    <button
+                      key={size.key}
+                      onClick={() => setBoardSize(size.key)}
+                      className={`py-2 px-3 rounded-xl text-sm font-bold transition-all ${
+                        boardSize === size.key
+                          ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg scale-105'
+                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      }`}
+                    >
+                      {size.emoji} {size.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Fullscreen */}
+              <div>
+                <label className="text-sm font-semibold text-gray-300 mb-2 block">🖥️ Affichage</label>
+                <button
+                  onClick={toggleFullscreen}
+                  className={`w-full py-2.5 px-4 rounded-xl text-sm font-bold transition-all ${
+                    isFullscreen
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  {isFullscreen ? '🔲 Quitter le plein écran' : '⬜ Plein écran'}
+                </button>
+              </div>
+
+              {/* Game Mode */}
+              <div>
+                <label className="text-sm font-semibold text-gray-300 mb-2 block">🎮 Mode de jeu</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => changeGameMode('classic')}
+                    disabled={gameState === 'playing' || gameState === 'paused'}
+                    className={`py-2.5 px-3 rounded-xl text-sm font-bold transition-all ${
+                      gameMode === 'classic'
+                        ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg scale-105'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    } ${(gameState === 'playing' || gameState === 'paused') ? 'opacity-40 cursor-not-allowed' : ''}`}
+                  >
+                    🎮 Classique
+                  </button>
+                  <button
+                    onClick={() => changeGameMode('levels')}
+                    disabled={gameState === 'playing' || gameState === 'paused'}
+                    className={`py-2.5 px-3 rounded-xl text-sm font-bold transition-all ${
+                      gameMode === 'levels'
+                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg scale-105'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    } ${(gameState === 'playing' || gameState === 'paused') ? 'opacity-40 cursor-not-allowed' : ''}`}
+                  >
+                    🏆 Niveaux
+                  </button>
+                </div>
+              </div>
+
+              {/* Difficulty */}
+              <div>
+                <label className="text-sm font-semibold text-gray-300 mb-2 block">⚡ Difficulté</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { key: 'easy' as Difficulty, label: 'Facile', emoji: '🐢', color: 'from-green-500 to-green-600' },
+                    { key: 'medium' as Difficulty, label: 'Moyen', emoji: '🐇', color: 'from-yellow-500 to-orange-500' },
+                    { key: 'hard' as Difficulty, label: 'Difficile', emoji: '⚡', color: 'from-red-500 to-red-600' },
+                  ]).map(d => (
+                    <button
+                      key={d.key}
+                      onClick={() => changeDifficulty(d.key)}
+                      disabled={gameState === 'playing' || gameState === 'paused'}
+                      className={`py-2 px-3 rounded-xl text-sm font-bold transition-all ${
+                        difficulty === d.key
+                          ? `bg-gradient-to-r ${d.color} text-white shadow-lg scale-105`
+                          : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      } ${(gameState === 'playing' || gameState === 'paused') ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    >
+                      {d.emoji} {d.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Wrap Around */}
+              <div>
+                <label className="text-sm font-semibold text-gray-300 mb-2 block">🌀 Traversée des murs</label>
+                <button
+                  onClick={toggleWrapAround}
+                  disabled={gameState === 'playing' || gameState === 'paused' || gameMode === 'levels'}
+                  className={`w-full py-2.5 px-4 rounded-xl text-sm font-bold transition-all ${
+                    wrapAround
+                      ? 'bg-gradient-to-r from-purple-600 to-violet-600 text-white shadow-lg'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  } ${(gameState === 'playing' || gameState === 'paused' || gameMode === 'levels') ? 'opacity-40 cursor-not-allowed' : ''}`}
+                >
+                  {wrapAround ? '🌀 Activé' : '🧱 Désactivé'}
+                  {gameMode === 'levels' && ' (désactivé en mode niveaux)'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
