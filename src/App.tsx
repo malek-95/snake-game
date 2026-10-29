@@ -18,6 +18,7 @@ import { ReplayViewer } from './components/ReplayViewer';
 import { LevelEditor } from './components/LevelEditor';
 import { VersusScreen } from './components/VersusScreen';
 import { OnlineLobby } from './components/OnlineLobby';
+import { useProfile } from './online/account';
 import { onlineEnabled } from './online/client';
 import { submitWorldScore, fetchDailyGhost, type DailyGhost } from './online/worldLeaderboard';
 import type { Direction, BoardSize, GameMode } from './types/game.types';
@@ -94,6 +95,11 @@ function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [customLevelId, setCustomLevelId] = useState<string | undefined>(customLevels.levels[0]?.id);
   const [nameInput, setNameInput] = useState(leaderboard.playerName);
+  const account = useProfile();
+  // Players with a ranked account use their username on the score boards too.
+  useEffect(() => {
+    if (account.profile) setNameInput(account.profile.username);
+  }, [account.profile?.username]); // eslint-disable-line react-hooks/exhaustive-deps
   const [saved, setSaved] = useState<{ gameId: number; rank: number; world: 'sending' | 'sent' | 'kept' | 'error' | null } | null>(null);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   // When the current game started, so the world board can reject impossibly fast games.
@@ -246,6 +252,7 @@ function App() {
           musicOn={audio.music}
           t={t}
           initialCode={inviteCode}
+          account={account}
           onExit={() => setScreen('game')}
           onMatchWon={achievements.recordVersusWin}
         />

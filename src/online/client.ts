@@ -8,6 +8,7 @@ const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
  * Online features check this and hide themselves, so the game always works offline.
  */
 export const supabase: SupabaseClient | null =
-  url && key ? createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } }) : null;
+  // Default auth settings: the ranked account (anonymous sign-in) stays in this browser.
+  url && key ? createClient(url, key) : null;
 
 export const onlineEnabled = supabase !== null;

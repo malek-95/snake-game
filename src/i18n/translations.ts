@@ -193,6 +193,14 @@ export interface Translations {
   quickMatch: string;
   searchingPlayer: string;
   cancel: string;
+  ranked: string;
+  rankedName: string;
+  rankedHint: string;
+  usernameTaken: string;
+  usernameInvalid: string;
+  rating: string;
+  rankedWaiting: string;
+  rankedMismatch: string;
 
   // Language selector
   language: string;
@@ -367,6 +375,14 @@ export const translations: Record<Language, Translations> = {
     quickMatch: 'Partie rapide',
     searchingPlayer: 'Recherche d’un joueur…',
     cancel: 'Annuler',
+    ranked: '🏆 Classé',
+    rankedName: 'Ton pseudo classé',
+    rankedHint: 'Choisis un pseudo pour jouer en classé (sans email ni mot de passe).',
+    usernameTaken: 'Ce pseudo est déjà pris.',
+    usernameInvalid: 'Pseudo : 1 à 16 caractères.',
+    rating: 'Classement',
+    rankedWaiting: 'En attente de la confirmation de l’adversaire…',
+    rankedMismatch: 'Résultats différents : match non compté.',
     language: '🌐 Language / Langue',
     french: '🇫🇷 Français',
     english: '🇬🇧 English',
@@ -537,6 +553,14 @@ export const translations: Record<Language, Translations> = {
     quickMatch: 'Quick match',
     searchingPlayer: 'Looking for a player…',
     cancel: 'Cancel',
+    ranked: '🏆 Ranked',
+    rankedName: 'Your ranked username',
+    rankedHint: 'Pick a username to play ranked (no email or password).',
+    usernameTaken: 'That username is taken.',
+    usernameInvalid: 'Username: 1 to 16 characters.',
+    rating: 'Rating',
+    rankedWaiting: 'Waiting for the other player to confirm…',
+    rankedMismatch: 'Results didn’t match: match not counted.',
     language: '🌐 Language / Langue',
     french: '🇫🇷 Français',
     english: '🇬🇧 English',

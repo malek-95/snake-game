@@ -3,6 +3,7 @@ import { OnlineVersus } from './OnlineVersus';
 import { onlineEnabled } from '../online/client';
 import { openRoom, makeRoomCode, normalizeCode, isValidCode, type Room, type RoomError } from '../online/room';
 import { quickMatch } from '../online/quickMatch';
+import type { useProfile, UsernameError } from '../online/account';
 import type { Skin, Theme } from '../features/look';
 import type { Difficulty } from '../types/game.types';
 import type { TFunction } from '../i18n/useTranslation';
@@ -15,6 +16,8 @@ interface Props {
   t: TFunction;
   /** Room code from a shared link: join it straight away. */
   initialCode?: string;
+  /** My ranked account (username + rating); players without one play unranked. */
+  account: ReturnType<typeof useProfile>;
   onExit: () => void;
   onMatchWon: () => void;
 }
@@ -27,13 +30,26 @@ const ERROR_TEXT: Record<RoomError, 'roomNotFound' | 'roomFull' | 'connectionFai
   failed: 'connectionFailed',
 };
 
-export const OnlineLobby = ({ difficulty, skin, theme, musicOn, t, initialCode, onExit, onMatchWon }: Props) => {
+export const OnlineLobby = ({ difficulty, skin, theme, musicOn, t, initialCode, account, onExit, onMatchWon }: Props) => {
   const [status, setStatus] = useState<Status>('menu');
   const [room, setRoom] = useState<Room | null>(null);
   const [error, setError] = useState<RoomError | null>(null);
   const [codeInput, setCodeInput] = useState(normalizeCode(initialCode ?? ''));
   const [copied, setCopied] = useState(false);
   const roomRef = useRef<Room | null>(null);
+  const { profile } = account;
+  const [username, setUsername] = useState(profile?.username ?? '');
+  const [nameState, setNameState] = useState<'idle' | 'saving' | 'saved' | UsernameError>('idle');
+  useEffect(() => { if (profile) setUsername(profile.username); }, [profile?.username]); // eslint-disable-line react-hooks/exhaustive-deps
+  const saveName = async () => {
+    setNameState('saving');
+    try {
+      await account.rename(username);
+      setNameState('saved');
+    } catch (e) {
+      setNameState(typeof e === 'string' ? e as UsernameError : 'failed');
+    }
+  };
 
   // Leaving the screen always leaves the room.
   useEffect(() => () => roomRef.current?.close(), []);
@@ -100,11 +116,12 @@ export const OnlineLobby = ({ difficulty, skin, theme, musicOn, t, initialCode, 
     roomRef.current = null;
     setRoom(null);
     setStatus('menu');
+    account.refresh(); // the rating may have changed
   };
 
   if (status === 'playing' && room) {
     return (
-      <OnlineVersus room={room} difficulty={difficulty} skin={skin} theme={theme} musicOn={musicOn} t={t} onExit={leave} onMatchWon={onMatchWon} />
+      <OnlineVersus room={room} profile={profile} difficulty={difficulty} skin={skin} theme={theme} musicOn={musicOn} t={t} onExit={leave} onMatchWon={onMatchWon} />
     );
   }
 
@@ -144,6 +161,40 @@ export const OnlineLobby = ({ difficulty, skin, theme, musicOn, t, initialCode, 
         </div>
       ) : (
         <>
+          <form className={card} onSubmit={e => { e.preventDefault(); saveName(); }}>
+            {profile ? (
+              <p className="text-white font-bold">
+                {t('ranked')} · {t('rating')} <span className="text-yellow-300 tabular-nums" data-rating>{profile.rating}</span>
+                <span className="block text-sm font-normal text-gray-400">{profile.wins}–{profile.losses}</span>
+              </p>
+            ) : (
+              <p className="text-gray-300 text-sm">{t('rankedHint')}</p>
+            )}
+            <label htmlFor="ranked-name" className="sr-only">{t('rankedName')}</label>
+            <div className="flex gap-2">
+              <input
+                id="ranked-name"
+                value={username}
+                onChange={e => { setUsername(e.target.value); setNameState('idle'); }}
+                maxLength={16}
+                autoComplete="nickname"
+                placeholder={t('rankedName')}
+                className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-gray-900 text-white border border-gray-600 focus:outline-none focus:border-cyan-400"
+              />
+              <button
+                type="submit"
+                disabled={nameState === 'saving' || !username.trim() || username.trim() === profile?.username}
+                className="px-4 py-2 rounded-xl font-bold text-white bg-gradient-to-r from-yellow-500 to-amber-600 disabled:opacity-40"
+              >
+                {nameState === 'saving' ? '…' : nameState === 'saved' ? '✓' : t('saveScore')}
+              </button>
+            </div>
+            {(nameState === 'taken' || nameState === 'invalid' || nameState === 'failed') && (
+              <p className="text-red-400 text-sm font-semibold" role="alert">
+                {t(nameState === 'taken' ? 'usernameTaken' : nameState === 'invalid' ? 'usernameInvalid' : 'serverError')}
+              </p>
+            )}
+          </form>
           <div className={card}>
             <button onClick={quick} disabled={status === 'connecting'} className={`${bigBtn} bg-gradient-to-r from-amber-500 to-orange-600`}>
               ⚡ {t('quickMatch')}
