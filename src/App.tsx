@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { useSnakeGame } from './hooks/useSnakeGame';
 import { useTranslation } from './i18n/useTranslation';
 import type { Direction, Difficulty, BoardSize } from './types/game.types';
@@ -37,9 +37,11 @@ function App() {
   const [boardSize, setBoardSize] = useState<BoardSize>('medium');
   const [showSettings, setShowSettings] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [boardDimensions, setBoardDimensions] = useState({ width: 0, height: 0 });
   const { language, setLanguage, t } = useTranslation();
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
 
   // Keyboard controls
   useEffect(() => {
@@ -145,6 +147,27 @@ function App() {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
+  // Track board dimensions for performance
+  useEffect(() => {
+    if (!boardRef.current) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        setBoardDimensions({ width, height });
+      }
+    });
+
+    resizeObserver.observe(boardRef.current);
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  // Calculate cell size once
+  const cellSize = useMemo(() => {
+    if (boardDimensions.width === 0) return 0;
+    return boardDimensions.width / gridSize;
+  }, [boardDimensions.width, gridSize]);
+
   // Handle language change
   const handleLanguageChange = (lang: 'fr' | 'en') => {
     setLanguage(lang);
@@ -154,7 +177,7 @@ function App() {
   const boardSizeClasses: Record<BoardSize, string> = {
     small: 'w-full max-w-[80vw] sm:max-w-md',
     medium: 'w-full max-w-[90vw] sm:max-w-lg',
-    large: 'w-full max-w-none',
+    large: 'w-full h-full max-w-none max-h-none',
   };
 
 
@@ -162,11 +185,11 @@ function App() {
   return (
     <div ref={containerRef} className={`min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-900 flex flex-col items-center select-none ${boardSize === 'large' ? 'p-0 h-screen overflow-hidden' : 'p-3 md:p-4 pb-8'}`}>
       {/* Main content wrapper */}
-      <div className={`w-full flex flex-col items-center justify-center flex-grow ${boardSize === 'large' ? 'py-2 h-full' : 'py-4'}`}>
+      <div className={`w-full flex flex-col items-center ${boardSize === 'large' ? 'flex-grow justify-center h-full gap-2' : 'flex-grow justify-center py-4 gap-3 md:gap-4'}`}>
       {/* Header */}
-      <div className={`w-full ${boardSize === 'large' ? 'max-w-full px-4 mb-2' : 'max-w-[90vw] sm:max-w-md md:max-w-lg mb-3 md:mb-4'}`}>
-        <div className={`flex items-center justify-between ${boardSize === 'large' ? 'mb-2' : 'mb-3'}`}>
-          <h1 className={`font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 ${boardSize === 'large' ? 'text-2xl md:text-4xl' : 'text-2xl md:text-4xl'}`}>
+      <div className={`w-full ${boardSize === 'large' ? 'max-w-full px-4' : 'max-w-[90vw] sm:max-w-md md:max-w-lg'}`}>
+        <div className="flex items-center justify-between mb-2">
+          <h1 className={`font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 ${boardSize === 'large' ? 'text-xl md:text-3xl' : 'text-2xl md:text-4xl'}`}>
             🐍 Snake
           </h1>
           <button
@@ -179,32 +202,32 @@ function App() {
         </div>
 
         {/* Score Board */}
-        <div className={`flex justify-between items-center bg-gray-800/60 backdrop-blur-sm rounded-2xl border border-gray-700/50 shadow-lg ${boardSize === 'large' ? 'px-4 py-2' : 'px-2 sm:px-4 py-2 sm:py-3'}`}>
+        <div className={`flex justify-between items-center bg-gray-800/60 backdrop-blur-sm rounded-2xl border border-gray-700/50 shadow-lg ${boardSize === 'large' ? 'px-3 py-1.5' : 'px-2 sm:px-4 py-2 sm:py-3'}`}>
           <div className="text-center flex-1">
-            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-[10px] sm:text-xs' : 'text-[9px] sm:text-xs'}`}>{t('score')}</p>
-            <p className={`font-bold text-white tabular-nums ${boardSize === 'large' ? 'text-xl sm:text-2xl' : 'text-lg sm:text-2xl'}`}>{score}</p>
+            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-[9px]' : 'text-[9px] sm:text-xs'}`}>{t('score')}</p>
+            <p className={`font-bold text-white tabular-nums ${boardSize === 'large' ? 'text-lg' : 'text-lg sm:text-2xl'}`}>{score}</p>
           </div>
-          <div className={`bg-gray-700 ${boardSize === 'large' ? 'w-px h-8' : 'w-px h-8'}`} />
+          <div className="bg-gray-700 w-px h-6" />
           <div className="text-center flex-1">
-            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-[10px] sm:text-xs' : 'text-[10px] md:text-xs'}`}>{t('record')}</p>
-            <p className={`font-bold text-yellow-400 tabular-nums ${boardSize === 'large' ? 'text-xl sm:text-2xl' : 'text-xl md:text-2xl'}`}>{highScore}</p>
+            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-[9px]' : 'text-[10px] md:text-xs'}`}>{t('record')}</p>
+            <p className={`font-bold text-yellow-400 tabular-nums ${boardSize === 'large' ? 'text-lg' : 'text-xl md:text-2xl'}`}>{highScore}</p>
           </div>
-          <div className={`bg-gray-700 ${boardSize === 'large' ? 'w-px h-8' : 'w-px h-8'}`} />
+          <div className="bg-gray-700 w-px h-6" />
           <div className="text-center flex-1">
-            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-[10px] sm:text-xs' : 'text-[10px] md:text-xs'}`}>{t('bonus')}</p>
-            <p className={`font-bold tabular-nums ${multiplier > 1 ? 'text-orange-400' : 'text-gray-500'} ${boardSize === 'large' ? 'text-xl sm:text-2xl' : 'text-lg md:text-xl'}`}>
+            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-[9px]' : 'text-[10px] md:text-xs'}`}>{t('bonus')}</p>
+            <p className={`font-bold tabular-nums ${multiplier > 1 ? 'text-orange-400' : 'text-gray-500'} ${boardSize === 'large' ? 'text-lg' : 'text-lg md:text-xl'}`}>
               x{multiplier}
             </p>
           </div>
-          <div className={`bg-gray-700 ${boardSize === 'large' ? 'w-px h-8' : 'w-px h-8'}`} />
+          <div className="bg-gray-700 w-px h-6" />
           <div className="text-center flex-1">
-            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-[10px] sm:text-xs' : 'text-[10px] md:text-xs'}`}>{t('apples')}</p>
-            <p className={`font-bold text-red-400 tabular-nums ${boardSize === 'large' ? 'text-xl sm:text-2xl' : 'text-lg md:text-xl'}`}>{applesEaten}</p>
+            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-[9px]' : 'text-[10px] md:text-xs'}`}>{t('apples')}</p>
+            <p className={`font-bold text-red-400 tabular-nums ${boardSize === 'large' ? 'text-lg' : 'text-lg md:text-xl'}`}>{applesEaten}</p>
           </div>
-          <div className={`bg-gray-700 ${boardSize === 'large' ? 'w-px h-8' : 'w-px h-8'}`} />
+          <div className="bg-gray-700 w-px h-6" />
           <div className="text-center flex-1">
-            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-[10px] sm:text-xs' : 'text-[10px] md:text-xs'}`}>{t('lives')}</p>
-            <p className={`font-bold ${boardSize === 'large' ? 'text-xl sm:text-2xl' : 'text-lg md:text-xl'}`}>
+            <p className={`text-gray-400 uppercase tracking-widest font-medium ${boardSize === 'large' ? 'text-[9px]' : 'text-[10px] md:text-xs'}`}>{t('lives')}</p>
+            <p className={`font-bold ${boardSize === 'large' ? 'text-lg' : 'text-lg md:text-xl'}`}>
               {Array.from({ length: lives }).map((_, i) => (
                 <span key={i} className="text-red-500">❤️</span>
               ))}
@@ -310,7 +333,8 @@ function App() {
 
       {/* Game Board */}
       <div
-        className={`relative ${boardSizeClasses[boardSize]} ${boardSize === 'large' ? 'aspect-square max-h-[calc(100vh-200px)] sm:max-h-[calc(100vh-250px)]' : 'aspect-square'} bg-gray-900/80 ${boardSize === 'large' ? 'rounded-none' : 'rounded-2xl'} border-2 overflow-hidden transition-all duration-300 ${
+        ref={boardRef}
+        className={`relative ${boardSizeClasses[boardSize]} ${boardSize === 'large' ? 'aspect-square w-full max-w-[min(100vw,100vh-12rem)]' : 'aspect-square'} bg-gray-900/80 ${boardSize === 'large' ? 'rounded-none' : 'rounded-2xl'} border-2 overflow-hidden transition-all duration-300 ${
           gameMode === 'levels'
             ? 'border-purple-500/60 shadow-2xl shadow-purple-900/30'
             : wrapAround
@@ -342,24 +366,23 @@ function App() {
         {snake.map((segment, index) => {
           const isHead = index === 0;
           const opacity = isHead ? 1 : Math.max(0.4, 1 - (index / snake.length) * 0.6);
-          const isInvincibleVisible = invincible && Math.floor(Date.now() / 100) % 2 === 0;
           return (
             <div
               key={index}
               className={`absolute rounded-md ${isHead ? 'z-20' : 'z-10'} ${invincible ? 'animate-pulse' : ''}`}
               style={{
-                left: `calc(${segment.x} * 100% / ${gridSize} + 1px)`,
-                top: `calc(${segment.y} * 100% / ${gridSize} + 1px)`,
-                width: `calc(100% / ${gridSize} - 2px)`,
-                height: `calc(100% / ${gridSize} - 2px)`,
-                backgroundColor: invincible ? (isInvincibleVisible ? '#fbbf24' : '#4ade80') : (isHead ? '#4ade80' : '#22c55e'),
-                opacity: invincible ? (isInvincibleVisible ? 0.6 : 1) : opacity,
-                boxShadow: isHead ? (invincible ? '0 0 12px rgba(251, 191, 36, 0.7)' : '0 0 12px rgba(74, 222, 128, 0.5)') : 'none',
+                transform: `translate(${segment.x * cellSize + 1}px, ${segment.y * cellSize + 1}px)`,
+                width: `${cellSize - 2}px`,
+                height: `${cellSize - 2}px`,
+                backgroundColor: isHead ? '#4ade80' : '#22c55e',
+                opacity,
+                boxShadow: isHead ? '0 0 12px rgba(74, 222, 128, 0.5)' : 'none',
+                willChange: 'transform',
               }}
             >
               {isHead && (
                 <div className="w-full h-full flex items-center justify-center text-[10px] md:text-xs leading-none">
-                  {invincible ? '🛡️' : '👀'}
+                  👀
                 </div>
               )}
             </div>
@@ -370,10 +393,10 @@ function App() {
         <div
           className="absolute z-10"
           style={{
-            left: `calc(${food.x} * 100% / ${gridSize})`,
-            top: `calc(${food.y} * 100% / ${gridSize})`,
-            width: `calc(100% / ${gridSize})`,
-            height: `calc(100% / ${gridSize})`,
+            transform: `translate(${food.x * cellSize}px, ${food.y * cellSize}px)`,
+            width: `${cellSize}px`,
+            height: `${cellSize}px`,
+            willChange: 'transform',
           }}
         >
           <div className="w-full h-full flex items-center justify-center animate-pulse">
@@ -387,10 +410,9 @@ function App() {
             key={`obs-${index}`}
             className="absolute rounded-sm bg-gradient-to-br from-gray-500 to-gray-700 border border-gray-400/30 shadow-inner"
             style={{
-              left: `calc(${obs.x} * 100% / ${gridSize} + 1px)`,
-              top: `calc(${obs.y} * 100% / ${gridSize} + 1px)`,
-              width: `calc(100% / ${gridSize} - 2px)`,
-              height: `calc(100% / ${gridSize} - 2px)`,
+              transform: `translate(${obs.x * cellSize + 1}px, ${obs.y * cellSize + 1}px)`,
+              width: `${cellSize - 2}px`,
+              height: `${cellSize - 2}px`,
             }}
           >
             <div className="w-full h-full flex items-center justify-center text-[8px] md:text-[10px] opacity-60">
@@ -474,13 +496,13 @@ function App() {
       </div>
 
       {/* Controls Section */}
-      <div className={`w-full space-y-3 ${boardSize === 'large' ? 'max-w-full px-4 mt-2' : 'max-w-[90vw] sm:max-w-md md:max-w-lg mt-3 md:mt-4'}`}>
+      <div className={`w-full ${boardSize === 'large' ? 'max-w-full px-4 space-y-2' : 'max-w-[90vw] sm:max-w-md md:max-w-lg space-y-3'}`}>
         {/* Action Buttons */}
-        <div className="flex gap-3 justify-center">
+        <div className="flex gap-2 justify-center">
           {gameState === 'playing' && (
             <button
               onClick={togglePause}
-              className={`bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg ${boardSize === 'large' ? 'px-6 py-2 text-sm md:text-base' : 'px-5 py-2.5 text-sm md:text-base'}`}
+              className={`bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg ${boardSize === 'large' ? 'px-4 py-1.5 text-xs md:text-sm' : 'px-5 py-2.5 text-sm md:text-base'}`}
             >
               {t('pause')}
             </button>
@@ -488,7 +510,7 @@ function App() {
           {(gameState === 'playing' || gameState === 'paused') && (
             <button
               onClick={startGame}
-              className={`bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 text-white font-semibold rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg ${boardSize === 'large' ? 'px-6 py-2 text-sm md:text-base' : 'px-5 py-2.5 text-sm md:text-base'}`}
+              className={`bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 text-white font-semibold rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg ${boardSize === 'large' ? 'px-4 py-1.5 text-xs md:text-sm' : 'px-5 py-2.5 text-sm md:text-base'}`}
             >
               {t('restart')}
             </button>
@@ -512,34 +534,34 @@ function App() {
         )}
 
         {/* Mobile D-Pad Controls */}
-        <div className="md:hidden mt-3">
-          <div className="flex flex-col items-center gap-1.5">
+        <div className={`md:hidden ${boardSize === 'large' ? 'mt-2' : 'mt-3'}`}>
+          <div className={`flex flex-col items-center ${boardSize === 'large' ? 'gap-1' : 'gap-1.5'}`}>
             <button
               onPointerDown={(e) => { e.preventDefault(); handleDPad('UP'); }}
-              className={`${boardSize === 'large' ? 'w-16 h-16 text-2xl' : 'w-14 h-14 text-xl'} bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none`}
+              className={`${boardSize === 'large' ? 'w-14 h-14 text-xl' : 'w-14 h-14 text-xl'} bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none`}
             >
               ▲
             </button>
-            <div className="flex gap-1.5">
+            <div className={`flex ${boardSize === 'large' ? 'gap-1' : 'gap-1.5'}`}>
               <button
                 onPointerDown={(e) => { e.preventDefault(); handleDPad('LEFT'); }}
-                className={`${boardSize === 'large' ? 'w-16 h-16 text-2xl' : 'w-14 h-14 text-xl'} bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none`}
+                className={`${boardSize === 'large' ? 'w-14 h-14 text-xl' : 'w-14 h-14 text-xl'} bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none`}
               >
                 ◀
               </button>
-              <div className={`${boardSize === 'large' ? 'w-16 h-16' : 'w-14 h-14'} rounded-xl bg-gray-800/40 border border-gray-700/30 flex items-center justify-center text-gray-600 text-xs`}>
+              <div className={`${boardSize === 'large' ? 'w-14 h-14' : 'w-14 h-14'} rounded-xl bg-gray-800/40 border border-gray-700/30 flex items-center justify-center text-gray-600 text-xs`}>
                 ●
               </div>
               <button
                 onPointerDown={(e) => { e.preventDefault(); handleDPad('RIGHT'); }}
-                className={`${boardSize === 'large' ? 'w-16 h-16 text-2xl' : 'w-14 h-14 text-xl'} bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none`}
+                className={`${boardSize === 'large' ? 'w-14 h-14 text-xl' : 'w-14 h-14 text-xl'} bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none`}
               >
                 ▶
               </button>
             </div>
             <button
               onPointerDown={(e) => { e.preventDefault(); handleDPad('DOWN'); }}
-              className={`${boardSize === 'large' ? 'w-16 h-16 text-2xl' : 'w-14 h-14 text-xl'} bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none`}
+              className={`${boardSize === 'large' ? 'w-14 h-14 text-xl' : 'w-14 h-14 text-xl'} bg-gray-700/80 active:bg-green-600 rounded-xl flex items-center justify-center text-white shadow-lg border border-gray-600/50 transition-colors touch-none select-none`}
             >
               ▼
             </button>
