@@ -38,8 +38,8 @@ const generateLevelConfig = (level: number): LevelConfig => {
   
   // Helper to check if position is safe (not in spawn zone)
   const isSafe = (x: number, y: number) => {
-    // Keep center area clear for snake spawn
-    return !(x >= center - 3 && x <= center + 3 && y >= center - 2 && y <= center + 2);
+    // Keep a larger center area clear for snake spawn (can accommodate longer snakes)
+    return !(x >= center - 5 && x <= center + 2 && y >= center - 2 && y <= center + 2);
   };
   
   // Helper to add obstacle if safe
@@ -73,8 +73,9 @@ const generateLevelConfig = (level: number): LevelConfig => {
     for (let i = 12; i <= 15; i++) {
       addObstacle(16, i);
     }
-    addObstacle(6, 6); addObstacle(7, 7);
-    addObstacle(13, 13); addObstacle(14, 14);
+    // Move corner obstacles further from center
+    addObstacle(5, 5); addObstacle(6, 6);
+    addObstacle(14, 14); addObstacle(15, 15);
   }
   
   // Level 4: Cross pattern (16 obstacles)
@@ -192,6 +193,7 @@ export function useSnakeGame() {
   const [levelApples, setLevelApples] = useState(0);
   const [levelCompleteEvent, setLevelCompleteEvent] = useState<{ id: number; level: number } | null>(null);
   const levelCompleteEventIdRef = useRef(0);
+  const [invincible, setInvincible] = useState(false);
 
   const directionRef = useRef<Direction>('RIGHT');
   const gameLoopRef = useRef<number | null>(null);
@@ -212,6 +214,7 @@ export function useSnakeGame() {
   const levelApplesRef = useRef(0);
   const levelConfigRef = useRef<LevelConfig>(generateLevelConfig(1));
   const directionQueueRef = useRef<Direction[]>([]);
+  const invincibleTicksRef = useRef(0);
 
   // Keep refs in sync
   useEffect(() => { snakeRef.current = snake; }, [snake]);
@@ -293,19 +296,129 @@ export function useSnakeGame() {
       // Keep snake size but reposition it safely
       const currentSnake = snakeRef.current;
       const snakeLength = currentSnake.length;
+      const obstacles = obstaclesRef.current;
       
-      // Create new snake with same length, starting from center going left
+      // Find a safe spawn position
       const center = Math.floor(GRID_SIZE / 2);
-      const newSnake: Position[] = [];
-      for (let i = 0; i < snakeLength; i++) {
-        const segment = { x: center - i, y: center };
-        // Make sure segment is within bounds
-        if (segment.x < 0) segment.x = 0;
-        newSnake.push(segment);
+      let spawnX = center;
+      let spawnY = center;
+      
+      // Try to find a position where the entire snake fits without hitting obstacles
+      // Also ensure there's space in front (RIGHT direction) for the first move
+      let foundSafePosition = false;
+      for (let offsetY = -3; offsetY <= 3 && !foundSafePosition; offsetY++) {
+        for (let offsetX = -3; offsetX <= 5 && !foundSafePosition; offsetX++) {
+          const testX = center + offsetX;
+          const testY = center + offsetY;
+          
+          // Must be within bounds
+          if (testX < 0 || testX >= GRID_SIZE || testY < 0 || testY >= GRID_SIZE) continue;
+          
+          // Check if snake fits here (going left from spawn point)
+          // Also check 2 cells ahead (RIGHT) for first moves
+          let fits = true;
+          for (let i = 0; i < snakeLength && fits; i++) {
+            const segX = testX - i;
+            if (segX < 0) {
+              fits = false;
+              break;
+            }
+            // Check if this segment hits an obstacle
+            if (obstacles.some(obs => obs.x === segX && obs.y === testY)) {
+              fits = false;
+              break;
+            }
+          }
+          
+          // Check space ahead (RIGHT direction)
+          if (fits) {
+            for (let ahead = 1; ahead <= 3; ahead++) {
+              const aheadX = testX + ahead;
+              if (aheadX >= GRID_SIZE || obstacles.some(obs => obs.x === aheadX && obs.y === testY)) {
+                fits = false;
+                break;
+              }
+            }
+          }
+          
+          if (fits) {
+            spawnX = testX;
+            spawnY = testY;
+            foundSafePosition = true;
+          }
+        }
       }
       
-      setSnake(newSnake);
-      snakeRef.current = newSnake;
+      // If no safe position found, reduce snake length to fit
+      if (!foundSafePosition) {
+        // Find maximum length that fits at center, also checking ahead
+        let maxLength = 1;
+        for (let i = 0; i < snakeLength; i++) {
+          const segX = center - i;
+          if (segX < 0 || obstacles.some(obs => obs.x === segX && obs.y === center)) {
+            break;
+          }
+          maxLength = i + 1;
+        }
+        
+        // Also check that there's space ahead
+        let safeAhead = true;
+        for (let ahead = 1; ahead <= 3; ahead++) {
+          if (center + ahead >= GRID_SIZE || obstacles.some(obs => obs.x === center + ahead && obs.y === center)) {
+            safeAhead = false;
+            break;
+          }
+        }
+        
+        // If not safe ahead, try other rows
+        if (!safeAhead) {
+          for (let row = 0; row < GRID_SIZE; row++) {
+            if (row === center) continue;
+            let rowMaxLen = 0;
+            for (let i = 0; i < snakeLength; i++) {
+              const segX = center - i;
+              if (segX < 0 || obstacles.some(obs => obs.x === segX && obs.y === row)) break;
+              rowMaxLen = i + 1;
+            }
+            let rowSafeAhead = true;
+            for (let ahead = 1; ahead <= 3; ahead++) {
+              if (center + ahead >= GRID_SIZE || obstacles.some(obs => obs.x === center + ahead && obs.y === row)) {
+                rowSafeAhead = false;
+                break;
+              }
+            }
+            if (rowSafeAhead && rowMaxLen >= 3) {
+              const newSnake: Position[] = [];
+              for (let i = 0; i < rowMaxLen; i++) {
+                newSnake.push({ x: center - i, y: row });
+              }
+              setSnake(newSnake);
+              snakeRef.current = newSnake;
+              foundSafePosition = true;
+              break;
+            }
+          }
+        }
+        
+        if (!foundSafePosition) {
+          // Last resort: create snake with reduced length at center
+          const newSnake: Position[] = [];
+          for (let i = 0; i < maxLength; i++) {
+            newSnake.push({ x: center - i, y: center });
+          }
+          setSnake(newSnake);
+          snakeRef.current = newSnake;
+        }
+      } else {
+        // Create snake at safe position
+        const newSnake: Position[] = [];
+        for (let i = 0; i < snakeLength; i++) {
+          newSnake.push({ x: spawnX - i, y: spawnY });
+        }
+        
+        setSnake(newSnake);
+        snakeRef.current = newSnake;
+      }
       
       // Reset direction and clear queue
       directionRef.current = 'RIGHT';
@@ -313,13 +426,17 @@ export function useSnakeGame() {
       setDirection('RIGHT');
       
       // Generate new food away from snake and obstacles
-      const newFood = getRandomPosition(newSnake, obstaclesRef.current);
+      const newFood = getRandomPosition(snakeRef.current, obstacles);
       setFood(newFood);
       foodRef.current = newFood;
       
       // Reset multiplier on death
       multiplierRef.current = 1;
       setMultiplier(1);
+      
+      // Grant brief invincibility after respawn (3 ticks)
+      invincibleTicksRef.current = 3;
+      setInvincible(true);
     } else {
       // No lives left, game over
       setGameState('gameover');
@@ -379,8 +496,13 @@ export function useSnakeGame() {
       return;
     }
 
-    // Check obstacle collision (in levels mode)
-    if (gameModeRef.current === 'levels' && obstaclesRef.current.some(obs => obs.x === newHead.x && obs.y === newHead.y)) {
+    // Check obstacle collision (in levels mode) - skip if invincible
+    if (invincibleTicksRef.current > 0) {
+      invincibleTicksRef.current--;
+      if (invincibleTicksRef.current === 0) {
+        setInvincible(false);
+      }
+    } else if (gameModeRef.current === 'levels' && obstaclesRef.current.some(obs => obs.x === newHead.x && obs.y === newHead.y)) {
       handleDeath();
       return;
     }
@@ -535,6 +657,7 @@ export function useSnakeGame() {
     setDirection('RIGHT');
     directionRef.current = 'RIGHT';
     directionQueueRef.current = [];
+    invincibleTicksRef.current = 0;
     setScore(0);
     scoreRef.current = 0;
     setApplesEaten(0);
@@ -630,6 +753,7 @@ export function useSnakeGame() {
     obstacles,
     levelApples,
     levelCompleteEvent,
+    invincible,
     gridSize: GRID_SIZE,
     startGame,
     togglePause,

@@ -22,6 +22,7 @@ function App() {
     obstacles,
     levelApples,
     levelCompleteEvent,
+    invincible,
     gridSize,
     startGame,
     togglePause,
@@ -294,23 +295,24 @@ function App() {
         {snake.map((segment, index) => {
           const isHead = index === 0;
           const opacity = isHead ? 1 : Math.max(0.4, 1 - (index / snake.length) * 0.6);
+          const isInvincibleVisible = invincible && Math.floor(Date.now() / 100) % 2 === 0;
           return (
             <div
               key={index}
-              className={`absolute rounded-md ${isHead ? 'z-20' : 'z-10'}`}
+              className={`absolute rounded-md ${isHead ? 'z-20' : 'z-10'} ${invincible ? 'animate-pulse' : ''}`}
               style={{
                 left: `calc(${segment.x} * 100% / ${gridSize} + 1px)`,
                 top: `calc(${segment.y} * 100% / ${gridSize} + 1px)`,
                 width: `calc(100% / ${gridSize} - 2px)`,
                 height: `calc(100% / ${gridSize} - 2px)`,
-                backgroundColor: isHead ? '#4ade80' : '#22c55e',
-                opacity,
-                boxShadow: isHead ? '0 0 12px rgba(74, 222, 128, 0.5)' : 'none',
+                backgroundColor: invincible ? (isInvincibleVisible ? '#fbbf24' : '#4ade80') : (isHead ? '#4ade80' : '#22c55e'),
+                opacity: invincible ? (isInvincibleVisible ? 0.6 : 1) : opacity,
+                boxShadow: isHead ? (invincible ? '0 0 12px rgba(251, 191, 36, 0.7)' : '0 0 12px rgba(74, 222, 128, 0.5)') : 'none',
               }}
             >
               {isHead && (
                 <div className="w-full h-full flex items-center justify-center text-[10px] md:text-xs leading-none">
-                  👀
+                  {invincible ? '🛡️' : '👀'}
                 </div>
               )}
             </div>
