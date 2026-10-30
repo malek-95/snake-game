@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Board } from './Board';
 import { matchWinner, WINS_NEEDED, POWER_ICONS, type VersusState } from '../game/versus';
 import { sound } from '../audio/sound';
-import { rivalSkin, type Skin, type Theme } from '../features/look';
+import { playerSkins, type Skin, type Theme } from '../features/look';
 import type { useBoardFit } from '../hooks/useBoardFit';
 import type { Direction } from '../types/game.types';
 import type { TFunction } from '../i18n/useTranslation';
@@ -15,10 +15,10 @@ interface Props {
   /** The confirmed final state once the round is over, else null. Drives results, stars and sounds. */
   ended: VersusState | null;
   /** Round wins so far (confirmed). */
-  wins: [number, number];
+  wins: number[];
   phase: VersusPhase;
-  /** Online: which player is on this screen. Null for two players on one keyboard. */
-  myIndex: 0 | 1 | null;
+  /** Online: which player is on this screen (-1: waiting for the next party match). Null for two players on one keyboard. */
+  myIndex: number | null;
   fit: ReturnType<typeof useBoardFit>;
   tickMs: number;
   skin: Skin;
@@ -35,8 +35,10 @@ interface Props {
   onTogglePowerUps?: () => void;
   /** Who may change it (local players, online host); others just see the setting. */
   onToggleWrap?: () => void;
-  /** Online: once the match is won, both players must ask for a rematch. */
+  /** Online: once the match is won, every player must ask for a rematch (them = all the others did). */
   rematch?: { me: boolean; them: boolean };
+  /** Online party: the host can't start yet (not enough players). */
+  startDisabled?: boolean;
   /** Online: emoji reactions to send, and the bubbles currently shown. */
   reactions?: { send: (emoji: string) => void; bubbles: ReactionBubble[] };
   onStart: () => void;
@@ -44,8 +46,8 @@ interface Props {
   onMatchWon: () => void;
   /** Online: swipes and the on-screen D-pad steer my snake. */
   onTurn?: (dir: Direction) => void;
-  /** Online: the other player's username, when they have one. */
-  opponentName?: string;
+  /** Online: other players' usernames, by player index, when they have one. */
+  playerNames?: (string | undefined)[];
   /** Online: ranked match info shown on the overlay. */
   note?: string;
 }
@@ -57,21 +59,22 @@ export const REACTIONS = ['👍', '😂', '🔥', '😱', '😎', 'GG'] as const
 
 export interface ReactionBubble {
   id: number;
-  from: 0 | 1;
+  from: number;
   emoji: string;
 }
 
 export const VersusView = ({
   state, ended, wins, phase, myIndex, fit, tickMs, skin, theme, musicOn, t,
-  roomCode, pingMs, peerGone, wrap, onToggleWrap, powerUps, onTogglePowerUps, rematch, reactions, onStart, onExit, onMatchWon, onTurn,
-  opponentName, note,
+  roomCode, pingMs, peerGone, wrap, onToggleWrap, powerUps, onTogglePowerUps, rematch, startDisabled, reactions, onStart, onExit, onMatchWon, onTurn,
+  playerNames, note,
 }: Props) => {
-  const skins = [skin, rivalSkin(skin)];
+  const party = state.players.length > 2;
+  const skins = playerSkins(skin, state.players.length);
 
   // Sounds: apples from the drawn game, round results only once confirmed.
   const prevApples = useRef(0);
   useEffect(() => {
-    const apples = state.players[0].apples + state.players[1].apples;
+    const apples = state.players.reduce((sum, p) => sum + p.apples, 0);
     if (apples > prevApples.current) sound.play('eat', apples);
     prevApples.current = apples;
   }, [state]);
@@ -107,9 +110,10 @@ export const VersusView = ({
   };
 
   const winner = ended ? matchWinner(ended) : null;
-  const names = myIndex === null
-    ? [t('player1'), t('player2')]
-    : [0, 1].map(i => (i === myIndex ? t('you') : opponentName ?? t('friend')));
+  const names = state.players.map((_, i) =>
+    myIndex === null ? t(i === 0 ? 'player1' : 'player2')
+    : i === myIndex ? t('you')
+    : playerNames?.[i] ?? (party ? `${t('player')} ${i + 1}` : t('friend')));
   const result = ended?.result ?? null;
   const resultText =
     result === 'draw' ? t('draw')
@@ -123,9 +127,9 @@ export const VersusView = ({
     <div className="h-[100dvh] flex flex-col items-center gap-2 p-2 overflow-hidden" style={{ background: theme.background }}>
       <div className="w-full flex items-center justify-between gap-2 px-2 shrink-0">
         <button onClick={onExit} className="px-3 py-2 rounded-xl text-sm font-bold bg-gray-700/70 text-white hover:bg-gray-600">{t('back')}</button>
-        <div className="flex items-center gap-3 md:gap-6">
-          {[0, 1].map(i => (
-            <div key={i} className={`relative flex items-center gap-2 bg-gray-800/70 border rounded-xl px-3 py-1.5 ${i === myIndex ? 'border-cyan-400/60' : 'border-gray-700'}`}>
+        <div className="flex flex-wrap items-center justify-center gap-2 md:gap-4">
+          {state.players.map((player, i) => (
+            <div key={i} className={`relative flex items-center gap-2 bg-gray-800/70 border rounded-xl px-3 py-1.5 ${i === myIndex ? 'border-cyan-400/60' : 'border-gray-700'} ${party && !player.alive ? 'opacity-50' : ''}`}>
               {reactions?.bubbles.filter(b => b.from === i).slice(-1).map(b => (
                 <span key={b.id} className="absolute left-1/2 -translate-x-1/2 top-full mt-1 z-40 animate-bonus-pop pointer-events-none bg-gray-900/90 border border-gray-600 rounded-full px-2.5 py-1 text-xl font-black text-white shadow-lg">
                   {b.emoji}
@@ -133,6 +137,7 @@ export const VersusView = ({
               ))}
               <span className="w-3 h-3 rounded-sm" style={{ background: skins[i].head, boxShadow: `0 0 8px ${skins[i].glow}` }} />
               <span className="text-white font-semibold text-sm hidden sm:inline">{names[i]}</span>
+              {party && !player.alive && phase === 'playing' && <span title={t('eliminated')} aria-label={t('eliminated')}>💀</span>}
               {(state.players[i].ghost ?? 0) > 0 && <span title="ghost">👻</span>}
               {(state.players[i].frozen ?? 0) > 0 && <span title="frozen">❄️</span>}
               <span className="text-red-300 text-sm tabular-nums">🍎 {state.players[i].apples}</span>
@@ -155,7 +160,7 @@ export const VersusView = ({
           snakes={state.players.map((p, i) => ({
             body: p.body,
             skin: skins[i],
-            dead: !!ended && !p.alive,
+            dead: (!!ended || party) && !p.alive, // 2 players: only once confirmed, a guessed crash can be undone
             effect: (p.ghost ?? 0) > 0 ? 'ghost' as const : (p.frozen ?? 0) > 0 ? 'frozen' as const : undefined,
           }))}
           food={state.food}
@@ -172,13 +177,14 @@ export const VersusView = ({
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center-safe overflow-y-auto gap-3 z-30 p-4 text-center">
               {peerGone ? (
                 <>
-                  <h2 className="text-2xl md:text-3xl font-bold text-white">{t('opponentLeft')}</h2>
+                  <h2 className="text-2xl md:text-3xl font-bold text-white">{party && myIndex !== 0 ? t('hostLeft') : t('opponentLeft')}</h2>
                   <button onClick={onExit} className="mt-1 px-8 py-3 rounded-xl text-lg font-bold text-white bg-gray-700 hover:bg-gray-600">{t('back')}</button>
                 </>
               ) : (
                 <>
                   <h2 className="text-2xl md:text-3xl font-bold text-white">{phase === 'ready' ? (roomCode ? t('online') : t('versus')) : resultText}</h2>
                   {note && <p className="text-yellow-300 font-semibold" role="status">{note}</p>}
+                  {party && <p className="text-gray-300 text-sm">{t('partyRule')}</p>}
                   <p className="text-gray-300 text-sm">{t('firstTo')}</p>
                   {/* Round options: whoever may change them gets buttons, the other player just sees them. */}
                   <div className="flex flex-wrap justify-center gap-2">
@@ -199,7 +205,7 @@ export const VersusView = ({
                     ))}
                   </div>
                   {myIndex !== null ? (
-                    <p className="text-sm" style={{ color: skins[myIndex].head }}>{t('you')}: {t('arrowsOrWasd')}</p>
+                    skins[myIndex] && <p className="text-sm" style={{ color: skins[myIndex].head }}>{t('you')}: {t('arrowsOrWasd')}</p>
                   ) : (
                     <div className="flex gap-4 text-sm">
                       <span style={{ color: skins[0].head }}>{t('p1Controls')}</span>
@@ -208,14 +214,14 @@ export const VersusView = ({
                   )}
                   <button
                     onClick={onStart}
-                    disabled={!!rematch && winner !== null && rematch.me}
+                    disabled={startDisabled || (!!rematch && winner !== null && rematch.me)}
                     className="mt-1 px-8 py-3 rounded-xl text-lg font-bold text-white bg-gradient-to-r from-green-500 to-emerald-600 shadow-lg hover:scale-105 active:scale-95 transition-transform disabled:opacity-50 disabled:hover:scale-100"
                   >
                     {phase === 'ready' ? t('startRound') : winner !== null ? (rematch ? t('rematch') : t('newMatch')) : t('nextRound')}
                   </button>
                   {rematch && winner !== null && (rematch.me || rematch.them) && (
                     <p className={`text-sm font-semibold ${rematch.them && !rematch.me ? 'text-amber-300 animate-pulse' : 'text-gray-300'}`} role="status">
-                      {rematch.me && !rematch.them ? t('waitingFriend') : rematch.them && !rematch.me ? t('friendWantsRematch') : ''}
+                      {rematch.me && !rematch.them ? t(party ? 'waitingPlayers' : 'waitingFriend') : rematch.them && !rematch.me ? t(party ? 'othersWantRematch' : 'friendWantsRematch') : ''}
                     </p>
                   )}
                   <p className="text-gray-500 text-xs">{t('pressEnterOrSpace')}</p>

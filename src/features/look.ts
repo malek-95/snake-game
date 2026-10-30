@@ -60,6 +60,12 @@ export const themeById = (id: string) => THEMES.find(t => t.id === id) ?? THEMES
 /** A second skin that stands out against `skin`, for player 2. */
 export const rivalSkin = (skin: Skin) => (skin.id === 'fire' ? skinById('ocean') : skinById('fire'));
 
+/** One skin per player (2 to 4), all different: mine, the rival's, then other clearly distinct colours. */
+export const playerSkins = (skin: Skin, count: number) =>
+  [skin, rivalSkin(skin), ...['neon', 'classic', 'ocean', 'fire'].map(skinById)]
+    .filter((s, i, all) => all.findIndex(o => o.id === s.id) === i)
+    .slice(0, count);
+
 const LOOK_KEY = 'snake-look';
 
 export const useLook = () => {

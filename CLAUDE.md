@@ -13,6 +13,7 @@ A browser Snake game (React 18 + TypeScript + Vite 6 + Tailwind 4), installable 
 - Full-size board (grid fills the screen, ~28px cells), space theme with starfield, smooth gliding snake drawn as one SVG line
 - Sound/music generated with Web Audio (`src/audio/sound.ts`), achievements (unlock skins), skins + themes, device leaderboard, replays
 - Local 2 players (one keyboard) and **online 2 players** (room codes, invite links `?room=ABCD`, quick match)
+- **Online party (3–4 players)**: "🎉 Party" in the lobby, same room codes/links; last snake standing (a crashed snake is out, the last one alive wins the round, last ones crashing together = draw); unranked
 - Online extras: rollback netcode + adaptive input delay, wall passing, power-ups (👻 ghost, ❄️ freeze, ✂️ scissors), emoji reactions, two-sided rematch, live ping
 - World leaderboard (one best score per player name per mode/difficulty), daily challenge board, ghost race vs today's best daily run
 - **Ranked 1v1**: optional username account (anonymous sign-in, set in the online lobby), Elo rating (start 1000, K=32), ladder tab in the leaderboard; matches count only when both players are signed in and both report the same winner
@@ -21,11 +22,11 @@ A browser Snake game (React 18 + TypeScript + Vite 6 + Tailwind 4), installable 
 ## Code map
 - `src/App.tsx` – main screen, modals, screens (game / versus / online / editor)
 - `src/hooks/useSnakeGame.ts` – single-player engine (modes, scoring, seeded RNG for daily)
-- `src/game/versus.ts` – deterministic 2-player rules (seeded food, wrap, power-ups)
+- `src/game/versus.ts` – deterministic rules for 2–4 players (seeded food, wrap, power-ups; player count = `wins.length`; eliminated snakes stop and don't block)
 - `src/game/elo.ts` – `eloDelta` (must match the SQL in the ranked migration; a live test checks), `cleanUsername`
-- `src/game/rollback.ts` – rollback netcode session (prediction, rewind/replay, input delay, `inputDelayFor`)
+- `src/game/rollback.ts` – rollback netcode session for N players (prediction, rewind/replay, input delay, `inputDelayFor`; `receive(msg, from)`, `dropPlayer` when someone leaves)
 - `src/components/` – `Board` (stars, snake SVG layer, items), `VersusView` (2P UI), `VersusScreen` (local), `OnlineVersus` (online), `OnlineLobby`, modals, `UpdatePrompt`
-- `src/online/` – `client.ts` (Supabase, optional; persists the auth session), `account.ts` (username, profile, ladder, ranked reports, `useProfile`), `room.ts` (realtime rooms + presence), `quickMatch.ts`, `worldLeaderboard.ts`
+- `src/online/` – `client.ts` (Supabase, optional; persists the auth session), `account.ts` (username, profile, ladder, ranked reports, `useProfile`), `room.ts` (realtime rooms + presence; party rooms hold 4, `onMembers` gives host-first join order), `quickMatch.ts`, `worldLeaderboard.ts`
 - `src/features/` – achievements, leaderboard (device), replay recorder, custom levels, skins/themes
 - `src/utils/game.utils.ts` – grid helpers, `gridForArea`, `dailyChallenge`, `seededRandom`, `todayKey`
 - `src/utils/storage.ts` – safe `localStorage` JSON helpers (always use these)
@@ -55,9 +56,8 @@ A browser Snake game (React 18 + TypeScript + Vite 6 + Tailwind 4), installable 
 - The user writes in mixed French/English and is not deeply technical: keep explanations short and plain.
 
 ## Remaining roadmap (from "what to add for more online fun")
-Done: reactions + rematch, daily challenge, power-ups, ghost race, quick match, username accounts + ranked ladder.
-Left:
-1. **3–4 player party matches** – generalize `versus.ts` / `rollback.ts` from 2 to N players.
+Done: reactions + rematch, daily challenge, power-ups, ghost race, quick match, username accounts + ranked ladder, 3–4 player party matches.
+Left: nothing on this list. Ideas: party quick match, spectating a running party match.
 
 ## Known limits
 - Scores are plausibility-checked, not proven (single player runs in the browser).
@@ -65,3 +65,4 @@ Left:
 - Ranked accounts live in one browser (clearing site data loses it; no login on another device). Leaving mid-match or refusing to report means no result; one person with two browsers can farm rating.
 - The full `npm test` with a backend sends more than 5 scores/min, so some score tests hit the rate limit; run them in parts ~60s apart.
 - Supabase free tier pauses after ~1 week without activity.
+- Party: the host runs the room; if the host leaves, the match ends. A player who leaves mid-round keeps going straight until they crash, then sits out the rest of the match. Someone who joins during a match plays the next one. Every message carries the sender's presence key `k`.
