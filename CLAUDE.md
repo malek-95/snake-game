@@ -4,7 +4,7 @@ Read this first in a new session. It sums up the project, how it's built, and ho
 
 ## What it is
 A browser Snake game (React 18 + TypeScript + Vite 6 + Tailwind 4), installable as a PWA, with online play.
-- **Live site:** https://malek-95.github.io/snake-game/ (GitHub Pages, auto-deployed from `master`)
+- **Live site:** https://www.snàke.com/ (`www.xn--snke-1na.com`, domain at OVH; GitHub Pages custom domain, auto-deployed from `master`; the old github.io address redirects)
 - **Repo:** https://github.com/malek-95/snake-game (public)
 - **Languages:** French (default) and English (`src/i18n/translations.ts`; every UI string goes in both)
 
@@ -66,3 +66,4 @@ Left: nothing on this list. Ideas: party quick match, spectating a running party
 - The full `npm test` with a backend sends more than 5 scores/min, so some score tests hit the rate limit; run them in parts ~60s apart.
 - Supabase free tier pauses after ~1 week without activity.
 - Party: the host runs the room; if the host leaves, the match ends. A player who leaves (or is silent for 3 s) mid-round keeps going straight until they crash, then sits out the rest of the match. Someone who joins during a match plays the next one. Every message carries the sender's presence key `k`.
+- Moving to snàke.com (Oct 2026) started browsers fresh: localStorage is per address, so local scores, achievements, settings and ranked accounts from the github.io address did not carry over.
