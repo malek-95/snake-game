@@ -28,7 +28,7 @@ jobs:
       # The Supabase URL and anon key are public by design; set them as repository variables
       # (Settings -> Secrets and variables -> Actions -> Variables). Without them the site
       # still deploys, just with the online features hidden.
-      - run: npx vite build --base=/${{ github.event.repository.name }}/
+      - run: npx vite build --base=/
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
