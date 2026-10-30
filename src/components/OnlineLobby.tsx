@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { OnlineVersus } from './OnlineVersus';
-import { onlineEnabled } from '../online/client';
+import { onlineEnabled, supabase } from '../online/client';
 import { openRoom, makeRoomCode, normalizeCode, isValidCode, type Room, type RoomError } from '../online/room';
 import { quickMatch } from '../online/quickMatch';
 import type { useProfile, UsernameError } from '../online/account';
@@ -76,11 +76,12 @@ export const OnlineLobby = ({ difficulty, skin, theme, musicOn, t, initialCode, 
     }
   };
 
-  const create = async () => {
+  /** Party: a room for 3-4 players, last snake standing. */
+  const create = async (party = false) => {
     setError(null);
     setStatus('connecting');
     try {
-      const r = await openRoom(makeRoomCode(), 'host');
+      const r = await openRoom(makeRoomCode(), 'host', 5000, supabase, party);
       enter(r);
       setStatus('waiting');
       r.setHandlers({ onPeer: present => present && setStatus('playing') });
@@ -157,7 +158,7 @@ export const OnlineLobby = ({ difficulty, skin, theme, musicOn, t, initialCode, 
           <p className="text-gray-300">{t('shareCode')}</p>
           <p className="text-5xl font-black tracking-[0.3em] text-white font-mono" aria-label={room.code.split('').join(' ')}>{room.code}</p>
           <button onClick={copyLink} className={`${bigBtn} bg-gray-700 hover:bg-gray-600 text-base`}>{copied ? t('copied') : `🔗 ${t('copyLink')}`}</button>
-          <p className="text-gray-400 animate-pulse">{t('waitingFriend')}</p>
+          <p className="text-gray-400 animate-pulse">{t(room.party ? 'waitingPlayers' : 'waitingFriend')}</p>
         </div>
       ) : (
         <>
@@ -199,8 +200,11 @@ export const OnlineLobby = ({ difficulty, skin, theme, musicOn, t, initialCode, 
             <button onClick={quick} disabled={status === 'connecting'} className={`${bigBtn} bg-gradient-to-r from-amber-500 to-orange-600`}>
               ⚡ {t('quickMatch')}
             </button>
-            <button onClick={create} disabled={status === 'connecting'} className={`${bigBtn} bg-gradient-to-r from-green-500 to-emerald-600`}>
+            <button onClick={() => create()} disabled={status === 'connecting'} className={`${bigBtn} bg-gradient-to-r from-green-500 to-emerald-600`}>
               ➕ {t('createRoom')}
+            </button>
+            <button onClick={() => create(true)} disabled={status === 'connecting'} className={`${bigBtn} bg-gradient-to-r from-fuchsia-500 to-purple-600`}>
+              🎉 {t('party')}
             </button>
           </div>
           <form className={card} onSubmit={e => { e.preventDefault(); join(codeInput); }}>

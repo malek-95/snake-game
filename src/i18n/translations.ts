@@ -191,6 +191,16 @@ export interface Translations {
   powerUps: string;
   racing: string;
   quickMatch: string;
+  party: string;
+  partyPlayers: string;
+  partyNeedMore: string;
+  partyRule: string;
+  player: string;
+  eliminated: string;
+  hostLeft: string;
+  nextMatchWait: string;
+  waitingPlayers: string;
+  othersWantRematch: string;
   searchingPlayer: string;
   cancel: string;
   ranked: string;
@@ -373,6 +383,16 @@ export const translations: Record<Language, Translations> = {
     powerUps: '⚡ Bonus spéciaux',
     racing: 'Course contre',
     quickMatch: 'Partie rapide',
+    party: 'Partie à 3–4 joueurs',
+    partyPlayers: 'Joueurs',
+    partyNeedMore: 'Il faut au moins 3 joueurs pour commencer',
+    partyRule: 'Qui se cogne est éliminé : le dernier serpent en vie gagne la manche',
+    player: 'Joueur',
+    eliminated: 'éliminé',
+    hostLeft: "L'hôte est parti",
+    nextMatchWait: 'Partie en cours : tu joueras la prochaine',
+    waitingPlayers: 'En attente des autres joueurs…',
+    othersWantRematch: 'Les autres veulent une revanche !',
     searchingPlayer: 'Recherche d’un joueur…',
     cancel: 'Annuler',
     ranked: '🏆 Classé',
@@ -551,6 +571,16 @@ export const translations: Record<Language, Translations> = {
     powerUps: '⚡ Power-ups',
     racing: 'Racing',
     quickMatch: 'Quick match',
+    party: 'Party: 3–4 players',
+    partyPlayers: 'Players',
+    partyNeedMore: 'At least 3 players are needed to start',
+    partyRule: 'Crash and you are out: the last snake alive wins the round',
+    player: 'Player',
+    eliminated: 'out',
+    hostLeft: 'The host left',
+    nextMatchWait: "Match in progress: you'll play the next one",
+    waitingPlayers: 'Waiting for the other players…',
+    othersWantRematch: 'The others want a rematch!',
     searchingPlayer: 'Looking for a player…',
     cancel: 'Cancel',
     ranked: '🏆 Ranked',

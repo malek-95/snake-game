@@ -5,7 +5,7 @@ import { newRound, matchWinner, randomSeed, type VersusState } from '../game/ver
 import { RollbackSession, inputDelayFor, type InputMessage } from '../game/rollback';
 import { getOppositeDirection } from '../utils/game.utils';
 import { SPEED_CONFIG, MAX_DIRECTION_QUEUE } from '../constants/game.constants';
-import type { Room } from '../online/room';
+import { PARTY_SIZE, type Room } from '../online/room';
 import { reportRankedResult, type Profile, type RankedResult } from '../online/account';
 import type { Skin, Theme } from '../features/look';
 import type { Difficulty, Direction } from '../types/game.types';
@@ -24,8 +24,12 @@ interface Props {
   onMatchWon: () => void;
 }
 
-// Both screens must show the same board.
+// Every screen must show the same board (a bigger one for 3-4 snakes).
 const ONLINE_GRID = { cols: 30, rows: 20 };
+const PARTY_GRID = { cols: 36, rows: 24 };
+const PARTY_MIN = 3;
+const isHostKey = (k: unknown) => typeof k === 'string' && k.startsWith('host-');
+const zeros = (n: number) => Array<number>(n).fill(0);
 // Compare game fingerprints this often (in confirmed ticks).
 const CHECK_EVERY = 30;
 
@@ -49,17 +53,34 @@ declare global {
 
 /**
  * Online match with rollback netcode: each player runs the game locally, my snake answers my keys
- * at once, and the other snake is corrected when their turns arrive. The host only picks when a
- * round starts and its random seed.
+ * at once, and the other snakes are corrected when their turns arrive. The host only picks when a
+ * round starts, its random seed and (in a party room) who plays: the lineup is fixed for a whole
+ * match, and someone who joins during a match plays the next one.
  */
 export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, t, onExit, onMatchWon }: Props) => {
   const fit = useBoardFit(true);
-  const me: 0 | 1 = room.role === 'host' ? 0 : 1;
-  const isHost = me === 0;
+  const isHost = room.role === 'host';
+  const party = room.party;
+  const grid = party ? PARTY_GRID : ONLINE_GRID;
+  // Party: everyone in the room, and the players of the current match (presence keys, host first).
+  const [members, setMembers] = useState<string[]>([]);
+  const membersRef = useRef(members);
+  membersRef.current = members;
+  const [lineup, setLineup] = useState<string[] | null>(null);
+  const lineupRef = useRef(lineup);
+  lineupRef.current = lineup;
+  const shown = lineup ?? members.slice(0, PARTY_SIZE);
+  // My player number (-1: waiting for the next party match).
+  const me = party ? shown.indexOf(room.key) : isHost ? 0 : 1;
+  const meRef = useRef(me);
+  meRef.current = me;
+  const count = party ? Math.max(2, shown.length) : 2;
+  // Every message says who sent it, so party players can tell each other apart.
+  const send = useCallback((event: string, payload: Record<string, unknown>) => room.send(event, { ...payload, k: room.key }), [room]);
 
-  const [view, setView] = useState<VersusState>(() => newRound(ONLINE_GRID, [0, 0], 1));
+  const [view, setView] = useState<VersusState>(() => newRound(grid, [0, 0], 1));
   const [ended, setEnded] = useState<VersusState | null>(null);
-  const [wins, setWins] = useState<[number, number]>([0, 0]);
+  const [wins, setWins] = useState<number[]>([0, 0]);
   const [phase, setPhase] = useState<VersusPhase>('ready');
   const [peerGone, setPeerGone] = useState(false);
   const [pingMs, setPingMs] = useState<number | null>(null);
@@ -75,16 +96,16 @@ export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, 
   const session = useRef<RollbackSession | null>(null);
   const round = useRef(0);
   const queue = useRef<Direction[]>([]);
-  // Rematch: both players have to ask for it.
-  const [rematch, setRematch] = useState({ me: false, them: false });
-  const rematchRef = useRef(rematch);
-  rematchRef.current = rematch;
+  // Rematch: everyone in the room has to ask for it (presence keys of those who did).
+  const [votes, setVotes] = useState<Set<string>>(new Set());
+  const votesRef = useRef(votes);
+  votesRef.current = votes;
   // Emoji reaction bubbles, each shown for a moment.
   const [bubbles, setBubbles] = useState<ReactionBubble[]>([]);
   const bubbleId = useRef(0);
   const lastReaction = useRef(0);
   const planned = useRef<Direction | null>(null);
-  const early = useRef(new Map<number, InputMessage[]>());
+  const early = useRef(new Map<number, { msg: InputMessage; k: unknown }[]>());
   const rtts = useRef<number[]>([]);
   const lastCheck = useRef(0);
   const theirChecks = useRef<{ t: number; h: number }[]>([]);
@@ -103,19 +124,43 @@ export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, 
   const [rankedResult, setRankedResult] = useState<RankedResult | 'error' | null>(null);
   const profileRef = useRef(profile);
   profileRef.current = profile;
+  // Party: usernames by presence key.
+  const [names, setNames] = useState<Record<string, string>>({});
   const sayHello = useCallback(() => {
     const p = profileRef.current;
-    if (p) room.send('hello', { id: p.id, name: p.username, rating: p.rating });
-  }, [room]);
+    if (p) send('hello', { id: p.id, name: p.username, rating: p.rating });
+  }, [send]);
 
-  const beginRound = useCallback((r: number, seed: number, w: [number, number], ms: number, wallPass: boolean, powers: boolean) => {
-    const start = newRound(ONLINE_GRID, w, seed, wallPass, powers);
-    if (w[0] === 0 && w[1] === 0) {
+  // Sender of a message as a player number (2 players: always the other one).
+  const playerOf = (k: unknown, ids = lineupRef.current) => (party ? (ids ?? []).indexOf(k as string) : undefined);
+
+  const beginRound = useCallback((r: number, seed: number, w: number[], ms: number, wallPass: boolean, powers: boolean, ids?: string[], out: number[] = []) => {
+    const start = newRound(grid, w, seed, wallPass, powers);
+    // Party players who left earlier in the match sit out the round.
+    for (const i of out) if (start.players[i]) start.players[i] = { ...start.players[i], alive: false };
+    if (!party && w.every(x => x === 0)) {
       matchId.current = `${room.code}-${seed}`;
       setRankedResult(null);
     }
-    const s = new RollbackSession(start, me, 12, inputDelayFor(median(rtts.current), ms));
-    for (const m of early.current.get(r) ?? []) s.receive(m);
+    const myIndex = party && ids ? ids.indexOf(room.key) : meRef.current;
+    if (ids) {
+      lineupRef.current = ids;
+      setLineup(ids);
+    }
+    votesRef.current = new Set();
+    setVotes(new Set());
+    if (myIndex < 0) {
+      // Not in this match: wait for the next one.
+      early.current.delete(r);
+      round.current = r;
+      return;
+    }
+    const s = new RollbackSession(start, myIndex, 12, inputDelayFor(median(rtts.current), ms));
+    for (const i of out) s.dropPlayer(i, []); // no turns will come from them
+    for (const m of early.current.get(r) ?? []) {
+      const from = playerOf(m.k, ids);
+      if (from === undefined || from >= 0) s.receive(m.msg, from);
+    }
     early.current.delete(r);
     session.current = s;
     round.current = r;
@@ -129,11 +174,10 @@ export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, 
     setView(start);
     setEnded(null);
     setWins(w);
-    setRematch({ me: false, them: false });
     setPhase('playing');
-  }, [me, room.code]);
+  }, [room.code, room.key, party, grid]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const showBubble = useCallback((from: 0 | 1, emoji: string) => {
+  const showBubble = useCallback((from: number, emoji: string) => {
     const id = ++bubbleId.current;
     setBubbles(b => [...b.slice(-4), { id, from, emoji }]);
     setTimeout(() => setBubbles(b => b.filter(x => x.id !== id)), 2200);
@@ -143,49 +187,61 @@ export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, 
     const now = performance.now();
     if (now - lastReaction.current < 600) return; // no spamming
     lastReaction.current = now;
-    showBubble(me, emoji);
-    room.send('react', { e: emoji });
-  }, [me, room, showBubble]);
+    showBubble(meRef.current, emoji);
+    send('react', { e: emoji });
+  }, [send, showBubble]);
 
-  // Host: pick the seed and start; begin half a round trip later, when the guest receives it.
+  // Host: pick the seed (and the party lineup) and start; begin half a round trip later, when the others receive it.
   const hostStartRound = useCallback(() => {
     const finished = endedRef.current;
-    const w: [number, number] = finished && matchWinner(finished) !== null ? [0, 0] : winsRef.current;
+    const newMatch = (finished && matchWinner(finished) !== null) || (party && !lineupRef.current);
+    const present = membersRef.current;
+    const ids = party ? (newMatch ? present.slice(0, PARTY_SIZE) : lineupRef.current!) : undefined;
+    if (ids && (newMatch ? ids.length < PARTY_MIN : ids.filter(k => present.includes(k)).length < 2)) return;
+    const out = ids ? ids.flatMap((k, i) => (present.includes(k) ? [] : [i])) : [];
+    const w = newMatch ? zeros(ids?.length ?? 2) : winsRef.current;
     const r = round.current + 1;
     const seed = randomSeed();
     const ms = SPEED_CONFIG[difficulty];
     const wallPass = wrapRef.current;
     const powers = powerUpsRef.current;
-    room.send('round', { r, seed, wins: w, ms, wrap: wallPass, powerUps: powers });
-    setTimeout(() => beginRound(r, seed, w, ms, wallPass, powers), (median(rtts.current) ?? 0) / 2);
-  }, [room, difficulty, beginRound]);
+    send('round', { r, seed, wins: w, ms, wrap: wallPass, powerUps: powers, ids, out });
+    setTimeout(() => beginRound(r, seed, w, ms, wallPass, powers, ids, out), (median(rtts.current) ?? 0) / 2);
+  }, [send, difficulty, beginRound, party]);
   const hostStartRef = useRef(hostStartRound);
   hostStartRef.current = hostStartRound;
 
   const toggleWrap = useCallback(() => {
     const next = !wrapRef.current;
     setWrap(next);
-    room.send('settings', { wrap: next, powerUps: powerUpsRef.current });
-  }, [room]);
+    send('settings', { wrap: next, powerUps: powerUpsRef.current });
+  }, [send]);
 
   const togglePowerUps = useCallback(() => {
     const next = !powerUpsRef.current;
     setPowerUps(next);
-    room.send('settings', { wrap: wrapRef.current, powerUps: next });
-  }, [room]);
+    send('settings', { wrap: wrapRef.current, powerUps: next });
+  }, [send]);
+
+  // Host: a rematch starts once everyone in the room asked for it.
+  const addVote = useCallback((k: string) => {
+    const next = new Set(votesRef.current).add(k);
+    votesRef.current = next;
+    setVotes(next);
+    if (isHost && membersRef.current.every(m => next.has(m))) hostStartRef.current();
+  }, [isHost]);
 
   const onStart = useCallback(() => {
     const finished = endedRef.current;
-    if (finished && matchWinner(finished) !== null) {
-      // Match over: ask for a rematch; it starts once both players asked.
-      setRematch(r => ({ ...r, me: true }));
-      room.send('rematch', {});
-      if (isHost && rematchRef.current.them) hostStartRound();
+    // Match over (or waiting to join a party): ask for a rematch.
+    if ((finished && matchWinner(finished) !== null) || meRef.current < 0) {
+      send('rematch', {});
+      addVote(room.key);
       return;
     }
     if (isHost) hostStartRound();
-    else room.send('start', {});
-  }, [isHost, hostStartRound, room]);
+    else send('start', {});
+  }, [isHost, hostStartRound, send, addVote, room.key]);
 
   // My turns wait in a short queue and are played one per tick, like in single player.
   const onTurn = useCallback((dir: Direction) => {
@@ -193,19 +249,47 @@ export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, 
     if (!s || phaseRef.current !== 'playing') return;
     const q = queue.current;
     // Compare with the last turn I asked for, even if input delay hasn't applied it yet.
-    const last = q.length ? q[q.length - 1] : planned.current ?? s.current.players[me].dir;
+    const last = q.length ? q[q.length - 1] : planned.current ?? s.current.players[s.me].dir;
     if (dir === last || dir === getOppositeDirection(last) || q.length >= MAX_DIRECTION_QUEUE) return;
     q.push(dir);
-  }, [me]);
+  }, []);
 
-  // Messages from the other player.
+  // Party: who is in the room. The host drops a player who leaves in the middle of a round
+  // (their snake goes straight on) and leaves them out of the next rounds of the match.
+  const onMembers = useCallback((keys: string[]) => {
+    const before = membersRef.current;
+    membersRef.current = keys;
+    setMembers(keys);
+    setPeerGone(isHost ? keys.length < 2 : !keys.some(isHostKey));
+    if (keys.some(k => !before.includes(k))) {
+      sayHello();
+      if (isHost) send('settings', { wrap: wrapRef.current, powerUps: powerUpsRef.current }); // newcomers see the settings
+    }
+    const s = session.current;
+    const ids = lineupRef.current;
+    if (!isHost || !s || !ids || s.roundOver) return;
+    ids.forEach((k, i) => {
+      if (before.includes(k) && !keys.includes(k) && i !== s.me) {
+        const ds = s.knownTurns(i);
+        s.dropPlayer(i, ds);
+        send('drop', { r: round.current, i, ds });
+      }
+    });
+    // A rematch may now have everyone's vote.
+    if (votesRef.current.size && keys.every(k => votesRef.current.has(k))) hostStartRef.current();
+  }, [isHost, send, sayHello]);
+
+  // Messages from the other players.
   useEffect(() => {
     room.setHandlers({
-      onPeer: present => {
-        setPeerGone(!present);
-        if (present) sayHello();
-        if (present && isHost) room.send('settings', { wrap: wrapRef.current, powerUps: powerUpsRef.current }); // a guest who just joined sees the setting
-      },
+      ...(party ? { onMembers } : {
+        onPeer: (present: boolean) => {
+          setPeerGone(!present);
+          if (present) sayHello();
+          if (present && isHost) send('settings', { wrap: wrapRef.current, powerUps: powerUpsRef.current }); // a guest who just joined sees the setting
+        },
+        onMembers: (keys: string[]) => { membersRef.current = keys; setMembers(keys); },
+      }),
       onMessage: (event, p) => {
         const r = p.r as number;
         switch (event) {
@@ -213,11 +297,17 @@ export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, 
             room.send('pong', p);
             break;
           case 'pong':
+            // In a party everyone answers everyone's pings: only count answers to mine.
+            if (p.k !== undefined && p.k !== room.key) break;
             rtts.current = [...rtts.current.slice(-6), performance.now() - (p.at as number)];
             setPingMs(median(rtts.current));
             break;
           case 'round':
-            if (!isHost) beginRound(r, p.seed as number, p.wins as [number, number], p.ms as number, !!p.wrap, !!p.powerUps);
+            if (!isHost) beginRound(r, p.seed as number, p.wins as number[], p.ms as number, !!p.wrap, !!p.powerUps,
+              party ? p.ids as string[] : undefined, party ? p.out as number[] : undefined);
+            break;
+          case 'drop':
+            if (!isHost && r === round.current) session.current?.dropPlayer(p.i as number, p.ds as (Direction | null)[]);
             break;
           case 'settings':
             if (!isHost) {
@@ -226,6 +316,10 @@ export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, 
             }
             break;
           case 'hello':
+            if (party) {
+              if (typeof p.name === 'string' && typeof p.k === 'string') setNames(n => ({ ...n, [p.k as string]: (p.name as string).slice(0, 16) }));
+              break;
+            }
             // Same account in two tabs plays unranked.
             if (typeof p.id === 'string' && p.id !== profileRef.current?.id && typeof p.name === 'string' && typeof p.rating === 'number') {
               const first = !opponentRef.current;
@@ -235,29 +329,34 @@ export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, 
               if (first) sayHello(); // they may have joined after my hello
             }
             break;
-          case 'react':
-            if (REACTIONS.includes(p.e as (typeof REACTIONS)[number])) showBubble(me === 0 ? 1 : 0, p.e as string);
+          case 'react': {
+            const from = playerOf(p.k) ?? (meRef.current === 0 ? 1 : 0);
+            if (from >= 0 && REACTIONS.includes(p.e as (typeof REACTIONS)[number])) showBubble(from, p.e as string);
             break;
+          }
           case 'rematch':
-            setRematch(rm => ({ ...rm, them: true }));
-            if (isHost && rematchRef.current.me) hostStartRef.current();
+            // (an older 2-player version doesn't say who it is)
+            addVote(typeof p.k === 'string' ? p.k : membersRef.current.find(k => k !== room.key) ?? '');
             break;
           case 'start':
             if (isHost && phaseRef.current !== 'playing') hostStartRef.current();
             break;
           case 'in': {
             const msg: InputMessage = { t: p.t as number, ds: p.ds as (Direction | null)[] };
-            if (r === round.current && session.current) session.current.receive(msg);
-            else if (r > round.current) early.current.set(r, [...(early.current.get(r) ?? []), msg]);
+            const from = playerOf(p.k);
+            if (r === round.current && session.current) {
+              if (from === undefined || from >= 0) session.current.receive(msg, from);
+            } else if (r > round.current) early.current.set(r, [...(early.current.get(r) ?? []), { msg, k: p.k }]);
             break;
           }
           case 'check':
-            if (r === round.current) theirChecks.current.push({ t: p.t as number, h: p.h as number });
+            // Everyone compares with the host's copy (the host also counts guests' mismatches).
+            if (r === round.current && (isHost || !party || isHostKey(p.k))) theirChecks.current.push({ t: p.t as number, h: p.h as number });
             break;
           case 'snapRequest':
             if (isHost && r === round.current) {
               const s = session.current?.stateAt(p.t as number);
-              if (s) room.send('snap', { r, t: p.t as number, s });
+              if (s) send('snap', { r, t: p.t as number, s });
             }
             break;
           case 'snap':
@@ -266,16 +365,16 @@ export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, 
         }
       },
     });
-  }, [room, isHost, beginRound, sayHello]);
+  }, [room, isHost, party, beginRound, sayHello, send, onMembers, addVote, showBubble]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Measure the round trip continuously (shown in the corner, used to line up the two clocks).
   useEffect(() => {
     if (peerGone) return;
-    const ping = () => room.send('ping', { at: performance.now() });
+    const ping = () => send('ping', { at: performance.now() });
     ping();
     const id = window.setInterval(ping, 2000);
     return () => clearInterval(id);
-  }, [room, peerGone]);
+  }, [send, peerGone]);
 
   // The game loop: one tick per frame, whatever the network does.
   useEffect(() => {
@@ -291,11 +390,11 @@ export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, 
         const msg = s.shouldWait(oneWayTicks) ? null : s.step(turn);
         if (msg) {
           if (turn) planned.current = queue.current.shift()!;
-          room.send('in', { r, ...msg });
+          send('in', { r, ...msg });
         } else {
-          // Waiting: repeat my latest turns so the other player can catch up.
+          // Waiting: repeat my latest turns so the others can catch up.
           const again = s.resend();
-          if (again) room.send('in', { r, ...again });
+          if (again) send('in', { r, ...again });
         }
       }
 
@@ -303,14 +402,14 @@ export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, 
       const mark = Math.floor(s.confirmedTick / CHECK_EVERY) * CHECK_EVERY;
       if (mark > lastCheck.current) {
         lastCheck.current = mark;
-        room.send('check', { r, t: mark, h: s.hashAt(mark) });
+        send('check', { r, t: mark, h: s.hashAt(mark) });
       }
       theirChecks.current = theirChecks.current.filter(c => {
         const mine = s.hashAt(c.t);
         if (mine === null) return true; // not confirmed here yet
         if (mine !== c.h) {
           mismatches.current++;
-          if (!isHost) room.send('snapRequest', { r, t: c.t });
+          if (!isHost) send('snapRequest', { r, t: c.t });
         }
         return false;
       });
@@ -330,12 +429,12 @@ export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, 
       }
     }, tickMs);
     return () => clearInterval(id);
-  }, [phase, peerGone, tickMs, room, isHost]);
+  }, [phase, peerGone, tickMs, send, isHost]);
 
   // Ranked: once the match is won, both players report the winner; the server counts it if they agree.
   useEffect(() => {
     const winner = ended ? matchWinner(ended) : null;
-    if (winner === null || !profile || !opponent || !matchId.current || reported.current === matchId.current) return;
+    if (party || winner === null || !profile || !opponent || !matchId.current || reported.current === matchId.current) return;
     reported.current = matchId.current;
     setRankedResult({ status: 'waiting' });
     reportRankedResult(matchId.current, opponent.id, winner === me ? profile.id : opponent.id)
@@ -344,10 +443,22 @@ export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, 
         if (r.status === 'done') setOpponent(o => o && { ...o, rating: o.rating - r.delta });
       })
       .catch(() => setRankedResult('error'));
-  }, [ended, profile, opponent, me]);
+  }, [ended, profile, opponent, me, party]);
 
-  const ranked = !!profile && !!opponent;
-  const note = !ranked ? undefined
+  // Party: the board shows everyone who's in before the first round.
+  useEffect(() => {
+    if (session.current) return;
+    setView(newRound(grid, zeros(count), 1));
+    setWins(zeros(count));
+  }, [count, grid]);
+
+  const matchOver = !!ended && matchWinner(ended) !== null;
+  const needMore = party && (!lineup || matchOver) && members.length < PARTY_MIN;
+  const ranked = !party && !!profile && !!opponent;
+  const note = party ? (phase === 'playing' ? undefined
+    : me < 0 ? t('nextMatchWait')
+    : `#${room.code} · ${t('partyPlayers')}: ${members.length}/${PARTY_SIZE}${needMore ? ` · ${t('partyNeedMore')}` : ''}`)
+    : !ranked ? undefined
     : rankedResult === null ? `${t('ranked')} · ${opponent.name} (${opponent.rating})`
     : rankedResult === 'error' ? t('serverError')
     : rankedResult.status === 'waiting' ? t('rankedWaiting')
@@ -394,13 +505,14 @@ export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, 
       onToggleWrap={isHost ? toggleWrap : undefined}
       powerUps={powerUps}
       onTogglePowerUps={isHost ? togglePowerUps : undefined}
-      rematch={rematch}
+      rematch={{ me: votes.has(room.key), them: members.length > 1 && members.every(k => k === room.key || votes.has(k)) }}
+      startDisabled={needMore}
       reactions={{ send: sendReaction, bubbles }}
       onStart={onStart}
       onExit={onExit}
       onMatchWon={onMatchWon}
       onTurn={onTurn}
-      opponentName={opponent?.name}
+      playerNames={party ? shown.map(k => names[k]) : [0, 1].map(i => (i === me ? undefined : opponent?.name))}
       note={note}
     />
   );

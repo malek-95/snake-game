@@ -135,6 +135,23 @@ backend('online rooms (live backend)', () => {
     host.close();
   }, 20000);
 
+  it('a party room takes up to 4 players, host first then guests in join order', async () => {
+    const code = makeRoomCode();
+    const host = await openRoom(code, 'host', 5000, player(), true);
+    let seen: string[] = [];
+    host.setHandlers({ onMembers: keys => { seen = keys; } });
+    const guests: Room[] = [];
+    for (let i = 0; i < 3; i++) guests.push(await openRoom(code, 'guest', 5000, player()));
+    expect(guests.every(g => g.party)).toBe(true);
+    await until(() => seen.length === 4);
+    expect(seen).toEqual([host.key, ...guests.map(g => g.key)]);
+    await expect(openRoom(code, 'guest', 5000, player())).rejects.toBe('full');
+    guests[1].close();
+    await until(() => seen.length === 3);
+    expect(seen).toEqual([host.key, guests[0].key, guests[2].key]);
+    for (const r of [host, guests[0], guests[2]]) r.close();
+  }, 30000);
+
   it('quick match pairs two players who start at the same moment', async () => {
     const [a, b] = await Promise.all([
       quickMatch(new AbortController().signal, player()),
