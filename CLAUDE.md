@@ -65,4 +65,4 @@ Left: nothing on this list. Ideas: party quick match, spectating a running party
 - Ranked accounts live in one browser (clearing site data loses it; no login on another device). Leaving mid-match or refusing to report means no result; one person with two browsers can farm rating.
 - The full `npm test` with a backend sends more than 5 scores/min, so some score tests hit the rate limit; run them in parts ~60s apart.
 - Supabase free tier pauses after ~1 week without activity.
-- Party: the host runs the room; if the host leaves, the match ends. A player who leaves mid-round keeps going straight until they crash, then sits out the rest of the match. Someone who joins during a match plays the next one. Every message carries the sender's presence key `k`.
+- Party: the host runs the room; if the host leaves, the match ends. A player who leaves (or is silent for 3 s) mid-round keeps going straight until they crash, then sits out the rest of the match. Someone who joins during a match plays the next one. Every message carries the sender's presence key `k`.

@@ -28,6 +28,8 @@ interface Props {
 const ONLINE_GRID = { cols: 30, rows: 20 };
 const PARTY_GRID = { cols: 36, rows: 24 };
 const PARTY_MIN = 3;
+// Party host: a player not heard from for this long is dropped (the cloud can take much longer to notice a closed tab).
+const SILENT_MS = 3000;
 const isHostKey = (k: unknown) => typeof k === 'string' && k.startsWith('host-');
 const zeros = (n: number) => Array<number>(n).fill(0);
 // Compare game fingerprints this often (in confirmed ticks).
@@ -110,6 +112,10 @@ export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, 
   const lastCheck = useRef(0);
   const theirChecks = useRef<{ t: number; h: number }[]>([]);
   const mismatches = useRef(0);
+  // Party host: when each player was last heard from, and who is out of the current round.
+  const heard = useRef(new Map<string, number>());
+  const dropped = useRef(new Set<number>());
+  const roundStartedAt = useRef(0);
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
   const endedRef = useRef(ended);
@@ -157,6 +163,8 @@ export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, 
     }
     const s = new RollbackSession(start, myIndex, 12, inputDelayFor(median(rtts.current), ms));
     for (const i of out) s.dropPlayer(i, []); // no turns will come from them
+    dropped.current = new Set(out);
+    roundStartedAt.current = performance.now();
     for (const m of early.current.get(r) ?? []) {
       const from = playerOf(m.k, ids);
       if (from === undefined || from >= 0) s.receive(m.msg, from);
@@ -256,6 +264,16 @@ export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, 
 
   // Party: who is in the room. The host drops a player who leaves in the middle of a round
   // (their snake goes straight on) and leaves them out of the next rounds of the match.
+  // Host: drop player i from the running round, once, on every screen.
+  const dropIndex = useCallback((i: number) => {
+    const s = session.current;
+    if (!s || s.roundOver || i === s.me || dropped.current.has(i)) return;
+    dropped.current.add(i);
+    const ds = s.knownTurns(i);
+    s.dropPlayer(i, ds);
+    send('drop', { r: round.current, i, ds });
+  }, [send]);
+
   const onMembers = useCallback((keys: string[]) => {
     const before = membersRef.current;
     membersRef.current = keys;
@@ -265,19 +283,11 @@ export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, 
       sayHello();
       if (isHost) send('settings', { wrap: wrapRef.current, powerUps: powerUpsRef.current }); // newcomers see the settings
     }
-    const s = session.current;
-    const ids = lineupRef.current;
-    if (!isHost || !s || !ids || s.roundOver) return;
-    ids.forEach((k, i) => {
-      if (before.includes(k) && !keys.includes(k) && i !== s.me) {
-        const ds = s.knownTurns(i);
-        s.dropPlayer(i, ds);
-        send('drop', { r: round.current, i, ds });
-      }
-    });
+    if (!isHost) return;
+    lineupRef.current?.forEach((k, i) => { if (before.includes(k) && !keys.includes(k)) dropIndex(i); });
     // A rematch may now have everyone's vote.
     if (votesRef.current.size && keys.every(k => votesRef.current.has(k))) hostStartRef.current();
-  }, [isHost, send, sayHello]);
+  }, [isHost, send, sayHello, dropIndex]);
 
   // Messages from the other players.
   useEffect(() => {
@@ -291,6 +301,7 @@ export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, 
         onMembers: (keys: string[]) => { membersRef.current = keys; setMembers(keys); },
       }),
       onMessage: (event, p) => {
+        if (typeof p.k === 'string') heard.current.set(p.k, performance.now());
         const r = p.r as number;
         switch (event) {
           case 'ping':
@@ -384,6 +395,12 @@ export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, 
       if (!s) return;
       const r = round.current;
 
+      if (isHost && party && !s.roundOver) {
+        const now = performance.now();
+        lineupRef.current?.forEach((k, i) => {
+          if (now - Math.max(heard.current.get(k) ?? 0, roundStartedAt.current) > SILENT_MS) dropIndex(i);
+        });
+      }
       if (!s.roundOver) {
         const oneWayTicks = Math.round(((median(rtts.current) ?? 0) / 2) / tickMs);
         const turn = queue.current[0] ?? null;
@@ -429,7 +446,7 @@ export const OnlineVersus = ({ room, profile, difficulty, skin, theme, musicOn, 
       }
     }, tickMs);
     return () => clearInterval(id);
-  }, [phase, peerGone, tickMs, send, isHost]);
+  }, [phase, peerGone, tickMs, send, isHost, party, dropIndex]);
 
   // Ranked: once the match is won, both players report the winner; the server counts it if they agree.
   useEffect(() => {
